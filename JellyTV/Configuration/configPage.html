@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>JellyTV</title>
+</head>
+
+<body>
+    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+        data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <div style="margin: 0 0 20px 0; text-align: center;">
+                    <picture>
+                        <source srcset="https://plugin.jellytv.app/logo_desk.png" type="image/jpeg"
+                            media="(min-width:1440px)">
+                        <img loading="lazy" src="https://plugin.jellytv.app/logo.png" alt="JellyTV"
+                            style="max-width: 100%; height: auto; border-radius: 8px;">
+                    </picture>
+                </div>
+                <script>
+                    // Defensive polyfills for varying dashboard versions
+                    (function () {
+                        try {
+                            if (typeof ApiClient !== 'undefined') {
+                                if (typeof ApiClient._getApiUrl !== 'function') {
+                                    ApiClient._getApiUrl = ApiClient.getUrl || ApiClient.getApiUrl || function (p) { return p; };
+                                }
+                                if (typeof ApiClient.getJSON !== 'function') {
+                                    ApiClient.getJSON = function (path) {
+                                        var url = (typeof ApiClient.getUrl === 'function') ? ApiClient.getUrl(path)
+                                            : (typeof ApiClient.getApiUrl === 'function') ? ApiClient.getApiUrl(path)
+                                                : path;
+                                        var headers = (typeof ApiClient.getFetchHeaders === 'function') ? ApiClient.getFetchHeaders() : {};
+                                        return fetch(url, { method: 'GET', headers: headers }).then(function (res) { return res.json(); });
+                                    };
+                                }
+                            }
+                        } catch (e) { /* ignore */ }
+                    })();
+                </script>
+                <form id="TemplateConfigForm">
+                    <h2 class="sectionTitle">Notifications</h2>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ForwardItemAdded" type="checkbox" is="emby-checkbox" />
+                            <span>Forward ItemAdded events</span>
+                        </label>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ForwardPlayback" type="checkbox" is="emby-checkbox" />
+                            <span>Forward Playback events</span>
+                        </label>
+                    </div>
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Jellyseerr</h2>
+                        <div class="fieldDescription">Base URL to your Jellyseerr instance (e.g.,
+                            https://jellyseerr.example.com). <br>
+                            If you want your iOS app to auto-configure, set this URL.
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="JellyseerrBaseUrl">Base URL</label>
+                            <input id="JellyseerrBaseUrl" type="text" is="emby-input"
+                                placeholder="https://jellyseerr.example.com" />
+                        </div>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Registered Users</h2>
+                    <div class="fieldDescription">List of users that have at least one registered device.</div>
+                    <div id="RegisteredUsersContainer">
+                        <!-- <div style="margin: 0 0 1em 0;">
+                            <button is="emby-button" id="RefreshRegisteredUsers" class="raised emby-button">
+                                <span>Refresh Registered Users</span>
+                            </button>
+                        </div> -->
+                        <ul id="RegisteredUsersList" class="itemsContainer" style="flex-direction: column;"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var TemplateConfig = {
+                pluginUniqueId: 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1'
+            };
+
+            document.querySelector('#TemplateConfigPage')
+                .addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId)
+                        .then(function (config) {
+                            document.querySelector('#JellyseerrBaseUrl').value = (config.JellyseerrBaseUrl || '');
+                            document.querySelector('#ForwardItemAdded').checked = config.ForwardItemAdded === true;
+                            var playbackEnabled = (config.ForwardPlaybackStart === true) || (config.ForwardPlaybackStop === true);
+                            document.querySelector('#ForwardPlayback').checked = playbackEnabled;
+                            return renderRegisteredUsers();
+                        })
+                        .catch(function () { /* ignore */ })
+                        .finally(function () { Dashboard.hideLoadingMsg(); });
+                });
+
+            function normalizeId(id) {
+                return (id || '').toString().toLowerCase().replace(/-/g, '');
+            }
+
+            function buildApiUrl(path) {
+                if (typeof ApiClient.getApiUrl === 'function') return ApiClient.getApiUrl(path);
+                if (typeof ApiClient.getUrl === 'function') return ApiClient.getUrl(path);
+                if (typeof ApiClient._getApiUrl === 'function') return ApiClient._getApiUrl(path);
+                return path;
+            }
+
+            function renderRegisteredUsers() {
+                var list = document.querySelector('#RegisteredUsersList');
+                list.innerHTML = '';
+                // Fetch from new endpoint that exposes users from persistent store
+                var path = 'Plugins/' + TemplateConfig.pluginUniqueId + '/JellyTV/users';
+                var url = buildApiUrl(path);
+                var headers = (typeof ApiClient.getFetchHeaders === 'function' ? ApiClient.getFetchHeaders() : {});
+                var promise = (typeof ApiClient.getJSON === 'function')
+                    ? ApiClient.getJSON(url)
+                    : fetch(url, { method: 'GET', headers: headers }).then(function (res) { return res.json(); });
+
+                return promise.then(function (entries) {
+                    entries = entries || [];
+                    if (!entries.length) {
+                        var li = document.createElement('li');
+                        li.textContent = 'No registered users yet.';
+                        list.appendChild(li);
+                        return;
+                    }
+                    ApiClient.getUsers().then(function (users) {
+                        var map = {};
+                        (users || []).forEach(function (u) {
+                            map[normalizeId(u.Id)] = u.Name || u.Username || '';
+                        });
+
+                        entries.forEach(function (u) {
+                            var li = document.createElement('li');
+                            var uid = (u.userId || u.UserId || '');
+                            var name = map[normalizeId(uid)] || '(unknown user)';
+                            li.textContent = name;
+                            list.appendChild(li);
+                        });
+                    }).catch(function () {
+                        var li = document.createElement('li');
+                        li.textContent = 'Failed to load users from server.';
+                        list.appendChild(li);
+                    });
+                }).catch(function (err) {
+                    try { console.error('Failed to load registered users:', err); } catch (e) { }
+                    var li = document.createElement('li');
+                    li.textContent = 'Failed to load registered users.';
+                    list.appendChild(li);
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                if (e.target && e.target.id === 'RefreshRegisteredUsers') {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    renderRegisteredUsers()
+                        .catch(function () { /* ignore */ })
+                        .finally(function () { Dashboard.hideLoadingMsg(); });
+                }
+            });
+
+            document.querySelector('#TemplateConfigForm')
+                .addEventListener('submit', function (e) {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        var baseUrl = (document.querySelector('#JellyseerrBaseUrl').value || '').trim();
+                        config.JellyseerrBaseUrl = baseUrl;
+                        config.ForwardItemAdded = document.querySelector('#ForwardItemAdded').checked;
+                        var playback = document.querySelector('#ForwardPlayback').checked;
+                        // Backward-compatible: map single toggle to both start and stop flags
+                        config.ForwardPlaybackStart = playback;
+                        config.ForwardPlaybackStop = playback;
+                        ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config)
+                            .then(function (result) {
+                                Dashboard.processPluginConfigurationUpdateResult(result);
+                                return renderRegisteredUsers();
+                            })
+                            .finally(function () { Dashboard.hideLoadingMsg(); });
+                    });
+
+                    e.preventDefault();
+                    return false;
+                });
+        </script>
+    </div>
+</body>
+
+</html>
