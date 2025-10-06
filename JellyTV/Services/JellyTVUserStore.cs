@@ -187,6 +187,16 @@ internal static class JellyTVUserStore
     public static void SetPreferences(string userId, JellyTVUserPreferences prefs)
     {
         EnsurePrefsLoaded();
+        if (!prefs.ForwardItemAdded.HasValue)
+        {
+            prefs.ItemAddedExplicit = false;
+        }
+
+        if (!prefs.ForwardPlayback.HasValue)
+        {
+            prefs.PlaybackExplicit = false;
+        }
+
         _preferencesCache![userId] = prefs;
 
         // Persist by re-saving the user store (tokens + prefs)
@@ -208,18 +218,27 @@ internal static class JellyTVUserStore
 
     public static bool IsEventAllowedForUser(string userId, string eventName)
     {
+        var cfg = Plugin.Instance?.Configuration;
+        bool defaultAllow = eventName switch
+        {
+            "ItemAdded" => cfg?.ForwardItemAdded == true,
+            "PlaybackStart" => cfg?.ForwardPlaybackStart == true,
+            "PlaybackStop" => cfg?.ForwardPlaybackStop == true,
+            _ => true
+        };
+
         var prefs = GetPreferences(userId);
         if (prefs == null)
         {
-            return true; // default allow
+            return defaultAllow;
         }
 
         return eventName switch
         {
-            "ItemAdded" => prefs.ForwardItemAdded != false,
-            "PlaybackStart" => prefs.ForwardPlayback != false,
-            "PlaybackStop" => prefs.ForwardPlayback != false,
-            _ => true
+            "ItemAdded" => prefs.ItemAddedExplicit ? prefs.ForwardItemAdded != false : defaultAllow,
+            "PlaybackStart" => prefs.PlaybackExplicit ? prefs.ForwardPlayback != false : defaultAllow,
+            "PlaybackStop" => prefs.PlaybackExplicit ? prefs.ForwardPlayback != false : defaultAllow,
+            _ => defaultAllow
         };
     }
 
@@ -251,6 +270,31 @@ internal static class JellyTVUserStore
         return removed;
     }
 
+    public static List<string> FilterUsersForEvent(IEnumerable<string> userIds, string eventName)
+    {
+        var result = new List<string>();
+        if (userIds == null)
+        {
+            return result;
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var userId in userIds)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || !seen.Add(userId))
+            {
+                continue;
+            }
+
+            if (IsEventAllowedForUser(userId, eventName))
+            {
+                result.Add(userId);
+            }
+        }
+
+        return result;
+    }
+
     public static List<string> GetTokensForUsers(IEnumerable<string> userIds)
     {
         var users = Load();
@@ -271,7 +315,9 @@ internal static class JellyTVUserStore
         return new UserPreferencesRecord
         {
             ForwardItemAdded = prefs.ForwardItemAdded,
-            ForwardPlayback = prefs.ForwardPlayback
+            ForwardPlayback = prefs.ForwardPlayback,
+            ItemAddedExplicit = prefs.ItemAddedExplicit ? true : (bool?)null,
+            PlaybackExplicit = prefs.PlaybackExplicit ? true : (bool?)null
         };
     }
 
@@ -302,7 +348,9 @@ internal static class JellyTVUserStore
         return new JellyTVUserPreferences
         {
             ForwardItemAdded = rec.ForwardItemAdded,
-            ForwardPlayback = playback
+            ForwardPlayback = playback,
+            ItemAddedExplicit = rec.ItemAddedExplicit == true,
+            PlaybackExplicit = rec.PlaybackExplicit == true
         };
     }
 
@@ -320,6 +368,10 @@ internal static class JellyTVUserStore
         public bool? ForwardItemAdded { get; set; }
 
         public bool? ForwardPlayback { get; set; }
+
+        public bool? ItemAddedExplicit { get; set; }
+
+        public bool? PlaybackExplicit { get; set; }
 
         // Legacy fields, retained for backward-compat deserialization
         public bool? ForwardPlaybackStart { get; set; }

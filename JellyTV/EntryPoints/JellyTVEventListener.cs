@@ -83,11 +83,10 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
         var actorId = e.Session?.UserId ?? Guid.Empty;
         var actorUid = actorId == Guid.Empty ? string.Empty : actorId.ToString("N");
         // Send to all registered users except the actor, honoring per-user preferences
-        var userIds = Services.JellyTVUserStore.Load()
+        var candidateIds = Services.JellyTVUserStore.Load()
             .Select(u => u.UserId)
-            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase))
-            .Where(uid => Services.JellyTVUserStore.IsEventAllowedForUser(uid, "PlaybackStart"))
-            .ToList();
+            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase));
+        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStart");
 
         var itemId = e.Item?.Id.ToString("N");
         var itemName = e.Item is Episode epStart ? (epStart.SeriesName ?? e.Item?.Name) : e.Item?.Name;
@@ -106,11 +105,10 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         var actorId = e.Session?.UserId ?? Guid.Empty;
         var actorUid = actorId == Guid.Empty ? string.Empty : actorId.ToString("N");
-        var userIds = Services.JellyTVUserStore.Load()
+        var candidateIds = Services.JellyTVUserStore.Load()
             .Select(u => u.UserId)
-            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase))
-            .Where(uid => Services.JellyTVUserStore.IsEventAllowedForUser(uid, "PlaybackStop"))
-            .ToList();
+            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase));
+        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStop");
 
         var itemId = e.Item?.Id.ToString("N");
         var itemName = e.Item is Episode epStop ? (epStop.SeriesName ?? e.Item?.Name) : e.Item?.Name;
@@ -145,10 +143,9 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         var itemId = item.Id.ToString("N");
         var itemName = GetDisplayName(item);
-        var userIds = Services.JellyTVUserStore.Load()
-            .Select(u => u.UserId)
-            .Where(uid => Services.JellyTVUserStore.IsEventAllowedForUser(uid, "ItemAdded"))
-            .ToList();
+        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(
+            Services.JellyTVUserStore.Load().Select(u => u.UserId),
+            "ItemAdded");
         _logger.LogDebug("ItemAdded event: users={UserCount}; itemId={ItemId}; name={Name}", userIds.Count, itemId, itemName);
         await _pushService.SendEventAsync("ItemAdded", itemId, userIds, itemName).ConfigureAwait(false);
     }

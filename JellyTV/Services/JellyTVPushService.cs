@@ -56,14 +56,21 @@ public sealed class JellyTVPushService
             return;
         }
 
-        var deviceTokens = JellyTVUserStore.GetTokensForUsers(userIds)
+        var targetUsers = JellyTVUserStore.FilterUsersForEvent(userIds, eventName);
+        if (targetUsers.Count == 0)
+        {
+            _logger.LogInformation("No users opted in for {Event}; skipping push.", eventName);
+            return;
+        }
+
+        var deviceTokens = JellyTVUserStore.GetTokensForUsers(targetUsers)
             .Select(CleanApnsToken)
             .Where(IsValidApnsToken)
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (deviceTokens.Count == 0)
         {
-            _logger.LogInformation("No devices to push for event {Event} (item={Item}, users={UsersCount})", eventName, itemName ?? string.Empty, (userIds ?? Array.Empty<string>()).Count());
+            _logger.LogInformation("No devices to push for event {Event} (item={Item}, users={UsersCount})", eventName, itemName ?? string.Empty, targetUsers.Count);
             return; // nothing to push
         }
 

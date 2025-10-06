@@ -87,10 +87,9 @@ public sealed class JellyTVEpisodeBatcher
             }
 
             // Build message and recipients at send time to respect latest preferences
-            var users = JellyTVUserStore.Load()
-                .Select(u => u.UserId)
-                .Where(uid => JellyTVUserStore.IsEventAllowedForUser(uid, "ItemAdded"))
-                .ToList();
+            var users = JellyTVUserStore.FilterUsersForEvent(
+                JellyTVUserStore.Load().Select(u => u.UserId),
+                "ItemAdded");
 
             string itemName = string.IsNullOrWhiteSpace(name)
                 ? Localizer.Format("EpisodesNewNoSeries", new Dictionary<string, string> { ["Count"] = count.ToString(CultureInfo.InvariantCulture) })

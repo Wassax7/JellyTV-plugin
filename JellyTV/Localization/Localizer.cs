@@ -12,13 +12,22 @@ internal static class Localizer
     private static readonly Dictionary<string, string> En = Dictionaries.En;
     private static readonly Dictionary<string, string> Fr = Dictionaries.Fr;
     private static readonly Dictionary<string, string> De = Dictionaries.De;
+    private static readonly Dictionary<string, string> Es = Dictionaries.Es;
+    private static readonly Dictionary<string, string> It = Dictionaries.It;
 
     private static Dictionary<string, string> Current
     {
         get
         {
             var code = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName?.ToLowerInvariant();
-            return code == "fr" ? Fr : code == "de" ? De : En;
+            return code switch
+            {
+                "fr" => Fr,
+                "de" => De,
+                "es" => Es,
+                "it" => It,
+                _ => En
+            };
         }
     }
 
@@ -130,6 +139,50 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "Neue Folgen verfügbar ({Count} neu)",
             ["EpisodeNewForSeries"] = "Neue Folge verfügbar für {Series}",
             ["EpisodesNewForSeries"] = "Neue Folgen verfügbar für {Series} ({Count} neu)",
+        };
+
+        public static readonly Dictionary<string, string> Es = new()
+        {
+            // Generic
+            ["Notification"] = "Notificación",
+            // Registration
+            ["RegistrationBody"] = "Ahora recibirás notificaciones push de JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Reproducción iniciada",
+            ["PlaybackStartedItem"] = "Reproducción iniciada: {Item}",
+            ["PlaybackStartedByUser"] = "{User} ha empezado a ver {Item}",
+            ["PlaybackStopped"] = "Reproducción detenida",
+            ["PlaybackStoppedItem"] = "Reproducción detenida: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} ha detenido {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "Nuevo contenido disponible",
+            ["ItemAddedNamed"] = "{Item} ya está disponible",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "Nuevos episodios disponibles ({Count} nuevos)",
+            ["EpisodeNewForSeries"] = "Nuevo episodio disponible para {Series}",
+            ["EpisodesNewForSeries"] = "Nuevos episodios disponibles para {Series} ({Count} nuevos)",
+        };
+
+        public static readonly Dictionary<string, string> It = new()
+        {
+            // Generic
+            ["Notification"] = "Notifica",
+            // Registration
+            ["RegistrationBody"] = "Ora riceverai le notifiche push di JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Riproduzione avviata",
+            ["PlaybackStartedItem"] = "Riproduzione avviata: {Item}",
+            ["PlaybackStartedByUser"] = "{User} ha iniziato a guardare {Item}",
+            ["PlaybackStopped"] = "Riproduzione terminata",
+            ["PlaybackStoppedItem"] = "Riproduzione terminata: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} ha interrotto {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "Nuovo contenuto disponibile",
+            ["ItemAddedNamed"] = "{Item} è ora disponibile",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "Nuovi episodi disponibili ({Count} nuovi)",
+            ["EpisodeNewForSeries"] = "Nuovo episodio disponibile per {Series}",
+            ["EpisodesNewForSeries"] = "Nuovi episodi disponibili per {Series} ({Count} nuovi)",
         };
     }
 }

@@ -76,7 +76,9 @@ public class JellyTVController : ControllerBase
         var prefs = new JellyTVUserPreferences
         {
             ForwardItemAdded = request.ForwardItemAdded,
-            ForwardPlayback = request.ForwardPlayback
+            ForwardPlayback = request.ForwardPlayback,
+            ItemAddedExplicit = request.ForwardItemAdded.HasValue,
+            PlaybackExplicit = request.ForwardPlayback.HasValue
         };
 
         JellyTVUserStore.SetPreferences(request.UserId, prefs);
@@ -106,15 +108,25 @@ public class JellyTVController : ControllerBase
 
         // Initialize per-user preferences on first registration if none exist yet.
         var existingPrefs = JellyTVUserStore.GetPreferences(request.UserId);
-        if (existingPrefs == null)
+        if (existingPrefs != null)
         {
-            var cfg = Plugin.Instance?.Configuration;
-            bool adminPlayback = (cfg?.ForwardPlaybackStart == true) || (cfg?.ForwardPlaybackStop == true);
-            JellyTVUserStore.SetPreferences(request.UserId, new JellyTVUserPreferences
+            var updated = false;
+            if (!existingPrefs.ItemAddedExplicit && existingPrefs.ForwardItemAdded == false)
             {
-                ForwardItemAdded = cfg?.ForwardItemAdded,
-                ForwardPlayback = adminPlayback
-            });
+                existingPrefs.ForwardItemAdded = null;
+                updated = true;
+            }
+
+            if (!existingPrefs.PlaybackExplicit && existingPrefs.ForwardPlayback == false)
+            {
+                existingPrefs.ForwardPlayback = null;
+                updated = true;
+            }
+
+            if (updated)
+            {
+                JellyTVUserStore.SetPreferences(request.UserId, existingPrefs);
+            }
         }
 
         // Send a confirmation push only if the token is newly registered
