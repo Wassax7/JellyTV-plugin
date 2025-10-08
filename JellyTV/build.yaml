@@ -1,7 +1,7 @@
 ---
 name: "JellyTV"
 guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
-version: "0.1.0.1"
+version: "0.1.0.2"
 targetAbi: "10.9.0.0"
 framework: "net8.0"
 overview: "Forward Jellyfin session and library alerts to JellyTV."

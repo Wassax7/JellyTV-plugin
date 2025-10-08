@@ -134,10 +134,23 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         if (item is Episode ep)
         {
-            // Batch per series within a short window.
-            var seriesKey = (ep.SeriesId != Guid.Empty ? ep.SeriesId.ToString("N") : ep.SeriesName) ?? string.Empty;
-            var seriesName = ep.SeriesName ?? string.Empty;
-            _episodeBatcher.Enqueue(seriesKey, seriesName);
+            // Batch per series within a short window while still tracking the specific episode that triggered the event.
+            var identity = ResolveEpisodeBatchIdentity(ep);
+            _logger.LogDebug(
+                "Queueing episode ItemAdded: episodeId={EpisodeId}; seriesKey={SeriesKey}; seriesName={SeriesName}; displayName={DisplayName}; season={Season}; episode={Episode}",
+                identity.EpisodeId,
+                identity.SeriesKey,
+                identity.SeriesName,
+                identity.EpisodeDisplayName,
+                identity.SeasonNumber,
+                identity.EpisodeNumber);
+            _episodeBatcher.Enqueue(
+                identity.SeriesKey,
+                identity.SeriesName,
+                identity.EpisodeId,
+                identity.EpisodeDisplayName,
+                identity.SeasonNumber,
+                identity.EpisodeNumber);
             return;
         }
 
@@ -170,4 +183,68 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         return item.Name ?? string.Empty;
     }
+
+    private static EpisodeBatchIdentity ResolveEpisodeBatchIdentity(Episode episode)
+    {
+        string key;
+        if (episode.SeriesId != Guid.Empty)
+        {
+            key = episode.SeriesId.ToString("N");
+        }
+        else
+        {
+            var rawSeriesName = episode.SeriesName;
+            if (!string.IsNullOrWhiteSpace(rawSeriesName))
+            {
+                key = rawSeriesName;
+            }
+            else
+            {
+                key = episode.Id.ToString("N");
+            }
+        }
+
+        var seriesName = episode.SeriesName;
+        if (string.IsNullOrWhiteSpace(seriesName))
+        {
+            var series = episode.Series;
+            if (!string.IsNullOrWhiteSpace(series?.Name))
+            {
+                seriesName = series.Name;
+            }
+            else
+            {
+                var season = episode.Season;
+                if (!string.IsNullOrWhiteSpace(season?.Name))
+                {
+                    seriesName = season.Name;
+                }
+            }
+        }
+
+        var displayName = GetDisplayName(episode);
+
+        if (string.IsNullOrWhiteSpace(seriesName))
+        {
+            seriesName = displayName;
+        }
+
+        var episodeId = episode.Id != Guid.Empty ? episode.Id.ToString("N") : string.Empty;
+
+        return new EpisodeBatchIdentity(
+            key,
+            seriesName ?? string.Empty,
+            episodeId,
+            displayName,
+            episode.ParentIndexNumber,
+            episode.IndexNumber);
+    }
+
+    private readonly record struct EpisodeBatchIdentity(
+        string SeriesKey,
+        string SeriesName,
+        string EpisodeId,
+        string EpisodeDisplayName,
+        int? SeasonNumber,
+        int? EpisodeNumber);
 }

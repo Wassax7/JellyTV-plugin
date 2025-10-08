@@ -47,8 +47,15 @@ public sealed class JellyTVPushService
     /// <param name="userIds">The Jellyfin user IDs to target.</param>
     /// <param name="itemName">The related item name (optional).</param>
     /// <param name="userName">The user name associated with the event (optional).</param>
+    /// <param name="bodyOverride">Optional override for the localized notification body.</param>
     /// <returns>A task representing the async operation.</returns>
-    public async Task SendEventAsync(string eventName, string? itemId, IEnumerable<string> userIds, string? itemName = null, string? userName = null)
+    public async Task SendEventAsync(
+        string eventName,
+        string? itemId,
+        IEnumerable<string> userIds,
+        string? itemName = null,
+        string? userName = null,
+        string? bodyOverride = null)
     {
         var plugin = Plugin.Instance;
         if (plugin == null)
@@ -75,7 +82,9 @@ public sealed class JellyTVPushService
         }
 
         const string title = "JellyTV";
-        var body = GetBodyForEvent(eventName, itemName, userName);
+        var body = string.IsNullOrWhiteSpace(bodyOverride)
+            ? GetBodyForEvent(eventName, itemName, userName)
+            : bodyOverride!;
         _logger.LogInformation("Pushing {Event} to {DeviceCount} device(s). item={Item} user={User}", eventName, deviceTokens.Count, itemName ?? string.Empty, userName ?? string.Empty);
         await PostToRelayManyAsync(deviceTokens, title, body).ConfigureAwait(false);
     }

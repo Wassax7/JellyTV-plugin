@@ -95,6 +95,8 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "New episodes available ({Count} new)",
             ["EpisodeNewForSeries"] = "New episode available for {Series}",
             ["EpisodesNewForSeries"] = "New episodes available for {Series} ({Count} new)",
+            ["EpisodeNewForSeriesDetailed"] = "New episode {Episode} from season {Season} available for {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "New episode {Episode} from season {Season} available",
         };
 
         public static readonly Dictionary<string, string> Fr = new()
@@ -117,6 +119,8 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "Nouveaux épisodes disponibles ({Count} nouveau(x))",
             ["EpisodeNewForSeries"] = "Nouvel épisode disponible pour {Series}",
             ["EpisodesNewForSeries"] = "Nouveaux épisodes disponibles pour {Series} ({Count} nouveaux)",
+            ["EpisodeNewForSeriesDetailed"] = "Nouvel épisode {Episode} de la saison {Season} disponible pour {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nouvel épisode {Episode} de la saison {Season} disponible",
         };
 
         public static readonly Dictionary<string, string> De = new()
@@ -139,6 +143,8 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "Neue Folgen verfügbar ({Count} neu)",
             ["EpisodeNewForSeries"] = "Neue Folge verfügbar für {Series}",
             ["EpisodesNewForSeries"] = "Neue Folgen verfügbar für {Series} ({Count} neu)",
+            ["EpisodeNewForSeriesDetailed"] = "Neue Folge {Episode} aus Staffel {Season} verfügbar für {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Neue Folge {Episode} aus Staffel {Season} verfügbar",
         };
 
         public static readonly Dictionary<string, string> Es = new()
@@ -161,6 +167,8 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "Nuevos episodios disponibles ({Count} nuevos)",
             ["EpisodeNewForSeries"] = "Nuevo episodio disponible para {Series}",
             ["EpisodesNewForSeries"] = "Nuevos episodios disponibles para {Series} ({Count} nuevos)",
+            ["EpisodeNewForSeriesDetailed"] = "Nuevo episodio {Episode} de la temporada {Season} disponible para {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nuevo episodio {Episode} de la temporada {Season} disponible",
         };
 
         public static readonly Dictionary<string, string> It = new()
@@ -183,6 +191,8 @@ internal static class Localizer
             ["EpisodesNewNoSeries"] = "Nuovi episodi disponibili ({Count} nuovi)",
             ["EpisodeNewForSeries"] = "Nuovo episodio disponibile per {Series}",
             ["EpisodesNewForSeries"] = "Nuovi episodi disponibili per {Series} ({Count} nuovi)",
+            ["EpisodeNewForSeriesDetailed"] = "Nuovo episodio {Episode} della stagione {Season} disponibile per {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nuovo episodio {Episode} della stagione {Season} disponibile",
         };
     }
 }
