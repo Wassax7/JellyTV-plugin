@@ -16,7 +16,12 @@ public sealed class PreferencesRequest
     public bool? ForwardItemAdded { get; set; }
 
     /// <summary>
-    /// Gets or sets whether to receive Playback notifications (start and stop) (null = default allow).
+    /// Gets or sets whether to receive PlaybackStart notifications (null = default allow).
     /// </summary>
-    public bool? ForwardPlayback { get; set; }
+    public bool? ForwardPlaybackStart { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to receive PlaybackStop notifications (null = default allow).
+    /// </summary>
+    public bool? ForwardPlaybackStop { get; set; }
 }

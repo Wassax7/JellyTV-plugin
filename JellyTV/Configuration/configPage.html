@@ -50,8 +50,14 @@
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
-                            <input id="ForwardPlayback" type="checkbox" is="emby-checkbox" />
-                            <span>Forward Playback events</span>
+                            <input id="ForwardPlaybackStart" type="checkbox" is="emby-checkbox" />
+                            <span>Forward Playback Start events</span>
+                        </label>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ForwardPlaybackStop" type="checkbox" is="emby-checkbox" />
+                            <span>Forward Playback Stop events</span>
                         </label>
                     </div>
                     <div class="verticalSection">
@@ -99,8 +105,15 @@
                         .then(function (config) {
                             document.querySelector('#JellyseerrBaseUrl').value = (config.JellyseerrBaseUrl || '');
                             document.querySelector('#ForwardItemAdded').checked = config.ForwardItemAdded === true;
-                            var playbackEnabled = (config.ForwardPlaybackStart === true) || (config.ForwardPlaybackStop === true);
-                            document.querySelector('#ForwardPlayback').checked = playbackEnabled;
+                            var playbackStartEnabled = (config.ForwardPlaybackStart === true);
+                            var playbackStopEnabled = (config.ForwardPlaybackStop === true);
+                            // Backward compatibility: fallback if old combined flag exists.
+                            if (typeof config.ForwardPlayback === 'boolean' && !config.ForwardPlaybackStart && !config.ForwardPlaybackStop) {
+                                playbackStartEnabled = config.ForwardPlayback;
+                                playbackStopEnabled = config.ForwardPlayback;
+                            }
+                            document.querySelector('#ForwardPlaybackStart').checked = playbackStartEnabled;
+                            document.querySelector('#ForwardPlaybackStop').checked = playbackStopEnabled;
                             return renderRegisteredUsers();
                         })
                         .catch(function () { /* ignore */ })
@@ -180,10 +193,8 @@
                         var baseUrl = (document.querySelector('#JellyseerrBaseUrl').value || '').trim();
                         config.JellyseerrBaseUrl = baseUrl;
                         config.ForwardItemAdded = document.querySelector('#ForwardItemAdded').checked;
-                        var playback = document.querySelector('#ForwardPlayback').checked;
-                        // Backward-compatible: map single toggle to both start and stop flags
-                        config.ForwardPlaybackStart = playback;
-                        config.ForwardPlaybackStop = playback;
+                        config.ForwardPlaybackStart = document.querySelector('#ForwardPlaybackStart').checked;
+                        config.ForwardPlaybackStop = document.querySelector('#ForwardPlaybackStop').checked;
                         ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config)
                             .then(function (result) {
                                 Dashboard.processPluginConfigurationUpdateResult(result);

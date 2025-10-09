@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.JellyTV.Configuration;
 using Jellyfin.Plugin.JellyTV.Services;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -24,6 +23,9 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
     private readonly ILogger<JellyTVEventListener> _logger;
     private readonly JellyTVPushService _pushService;
     private readonly JellyTVEpisodeBatcher _episodeBatcher;
+    private readonly object _playbackGate = new object();
+    private readonly Dictionary<string, DateTimeOffset> _recentPlaybackStarts = new Dictionary<string, DateTimeOffset>(StringComparer.OrdinalIgnoreCase);
+    private readonly TimeSpan _playbackStartCooldown = TimeSpan.FromMinutes(2);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTVEventListener"/> class.
@@ -74,21 +76,50 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
     private async void OnPlaybackStart(object? sender, PlaybackProgressEventArgs e)
     {
-        var cfg = Plugin.Instance?.Configuration;
-        if (cfg == null || !cfg.ForwardPlaybackStart)
+        var plugin = Plugin.Instance;
+        if (plugin?.Configuration?.ForwardPlaybackStart != true)
         {
             return;
         }
 
         var actorId = e.Session?.UserId ?? Guid.Empty;
         var actorUid = actorId == Guid.Empty ? string.Empty : actorId.ToString("N");
-        // Send to all registered users except the actor, honoring per-user preferences
-        var candidateIds = Services.JellyTVUserStore.Load()
-            .Select(u => u.UserId)
-            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase));
-        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStart");
-
+        var sessionId = e.Session?.Id ?? string.Empty;
         var itemId = e.Item?.Id.ToString("N");
+        var dedupeKey = string.IsNullOrWhiteSpace(sessionId)
+            ? $"{actorUid}|{itemId ?? string.Empty}"
+            : $"{sessionId}|{itemId ?? string.Empty}";
+
+        var now = DateTimeOffset.UtcNow;
+        lock (_playbackGate)
+        {
+            if (_recentPlaybackStarts.TryGetValue(dedupeKey, out var last) && now - last < _playbackStartCooldown)
+            {
+                _logger.LogDebug("PlaybackStart suppressed due to cooldown. key={Key}; secondsSinceLast={DeltaSeconds:F1}", dedupeKey, (now - last).TotalSeconds);
+                return;
+            }
+
+            _recentPlaybackStarts[dedupeKey] = now;
+
+            if (_recentPlaybackStarts.Count > 100)
+            {
+                foreach (var stale in _recentPlaybackStarts.Where(kvp => now - kvp.Value >= _playbackStartCooldown * 2).Select(kvp => kvp.Key).ToList())
+                {
+                    _recentPlaybackStarts.Remove(stale);
+                }
+            }
+        }
+
+        // Send to all registered users, honoring per-user preferences
+        var candidateIds = Services.JellyTVUserStore.Load()
+            .Select(u => u.UserId);
+        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStart");
+        if (userIds.Count == 0)
+        {
+            _logger.LogDebug("PlaybackStart event skipped: no opted-in recipients.");
+            return;
+        }
+
         var itemName = e.Item is Episode epStart ? (epStart.SeriesName ?? e.Item?.Name) : e.Item?.Name;
         var userName = e.Session?.UserName;
         _logger.LogDebug("PlaybackStart event: userIds={UserIds}; itemId={ItemId}; name={Name}; user={User}", string.Join(",", userIds), itemId, itemName, userName);
@@ -97,18 +128,20 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
     private async void OnPlaybackStopped(object? sender, PlaybackStopEventArgs e)
     {
-        var cfg = Plugin.Instance?.Configuration;
-        if (cfg == null || !cfg.ForwardPlaybackStop)
+        var plugin = Plugin.Instance;
+        if (plugin?.Configuration?.ForwardPlaybackStop != true)
         {
             return;
         }
 
-        var actorId = e.Session?.UserId ?? Guid.Empty;
-        var actorUid = actorId == Guid.Empty ? string.Empty : actorId.ToString("N");
         var candidateIds = Services.JellyTVUserStore.Load()
-            .Select(u => u.UserId)
-            .Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase));
+            .Select(u => u.UserId);
         var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStop");
+        if (userIds.Count == 0)
+        {
+            _logger.LogDebug("PlaybackStop event skipped: no opted-in recipients.");
+            return;
+        }
 
         var itemId = e.Item?.Id.ToString("N");
         var itemName = e.Item is Episode epStop ? (epStop.SeriesName ?? e.Item?.Name) : e.Item?.Name;
@@ -119,8 +152,8 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
     private async void OnItemAdded(object? sender, ItemChangeEventArgs e)
     {
-        var cfg = Plugin.Instance?.Configuration;
-        if (cfg == null || !cfg.ForwardItemAdded)
+        var plugin = Plugin.Instance;
+        if (plugin?.Configuration?.ForwardItemAdded != true)
         {
             return;
         }
@@ -132,18 +165,28 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             return;
         }
 
+        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(
+            Services.JellyTVUserStore.Load().Select(u => u.UserId),
+            "ItemAdded");
+        if (userIds.Count == 0)
+        {
+            _logger.LogDebug("ItemAdded event skipped: no opted-in recipients. itemId={ItemId}", item.Id.ToString("N"));
+            return;
+        }
+
         if (item is Episode ep)
         {
             // Batch per series within a short window while still tracking the specific episode that triggered the event.
             var identity = ResolveEpisodeBatchIdentity(ep);
             _logger.LogDebug(
-                "Queueing episode ItemAdded: episodeId={EpisodeId}; seriesKey={SeriesKey}; seriesName={SeriesName}; displayName={DisplayName}; season={Season}; episode={Episode}",
+                "Queueing episode ItemAdded: episodeId={EpisodeId}; seriesKey={SeriesKey}; seriesName={SeriesName}; displayName={DisplayName}; season={Season}; episode={Episode}; recipients={Recipients}",
                 identity.EpisodeId,
                 identity.SeriesKey,
                 identity.SeriesName,
                 identity.EpisodeDisplayName,
                 identity.SeasonNumber,
-                identity.EpisodeNumber);
+                identity.EpisodeNumber,
+                userIds.Count);
             _episodeBatcher.Enqueue(
                 identity.SeriesKey,
                 identity.SeriesName,
@@ -156,9 +199,6 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         var itemId = item.Id.ToString("N");
         var itemName = GetDisplayName(item);
-        var userIds = Services.JellyTVUserStore.FilterUsersForEvent(
-            Services.JellyTVUserStore.Load().Select(u => u.UserId),
-            "ItemAdded");
         _logger.LogDebug("ItemAdded event: users={UserCount}; itemId={ItemId}; name={Name}", userIds.Count, itemId, itemName);
         await _pushService.SendEventAsync("ItemAdded", itemId, userIds, itemName).ConfigureAwait(false);
     }
