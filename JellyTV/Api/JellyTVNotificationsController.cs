@@ -37,17 +37,20 @@ public sealed class JellyTVNotificationsController : ControllerBase
 
     /// <summary>
     /// Accepts an array of notification entries and forwards them to devices.
-    /// Requires header 'X-Emby-Token' to be present.
+    /// Requires authentication via 'X-Emby-Token' header or 'Authorization: MediaBrowser Token="..."' header.
     /// </summary>
     /// <param name="requests">Array payload of notifications.</param>
     /// <returns>HTTP 200 with a summary result.</returns>
     [HttpPost("notifications")]
     public async Task<ActionResult> PostNotifications([FromBody] System.Collections.ObjectModel.Collection<NotificationRequest> requests)
     {
-        // Require presence of Jellyfin token header
-        if (!Request.Headers.ContainsKey("X-Emby-Token"))
+        // Check for authentication token in either X-Emby-Token or Authorization header
+        var hasXEmbyToken = Request.Headers.ContainsKey("X-Emby-Token");
+        var hasAuthHeader = Request.Headers.ContainsKey("Authorization");
+
+        if (!hasXEmbyToken && !hasAuthHeader)
         {
-            return Unauthorized("Missing X-Emby-Token header");
+            return Unauthorized("Missing authentication header. Provide either 'X-Emby-Token' or 'Authorization: MediaBrowser Token=\"...\"'");
         }
 
         if (requests == null || requests.Count == 0)
@@ -62,12 +65,12 @@ public sealed class JellyTVNotificationsController : ControllerBase
         }
         catch (AuthenticationException)
         {
-            return Unauthorized("Invalid X-Emby-Token");
+            return Unauthorized("Invalid authentication token");
         }
 
         if (authorization == null || !authorization.HasToken || !authorization.IsAuthenticated)
         {
-            return Unauthorized("Invalid X-Emby-Token");
+            return Unauthorized("Invalid or expired authentication token");
         }
 
         int sent = 0;

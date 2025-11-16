@@ -31,10 +31,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public PluginConfiguration()
     {
         // JellyTV defaults
-        ForwardItemAdded = false;
-        ForwardPlaybackStart = true;
-        ForwardPlaybackStop = true;
+        ForwardItemAdded = true;
+        ForwardPlaybackStart = false;
+        ForwardPlaybackStop = false;
+        SendRegistrationConfirmation = true;
         JellyseerrBaseUrl = string.Empty;
+        PreferredLanguage = "en";
         // Deprecated: RegisteredUsers moved to persistent store file.
         RegisteredUsers = new Collection<JellyTVUserTokens>();
     }
@@ -55,10 +57,23 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ForwardPlaybackStop { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether to send confirmation notifications on device registration.
+    /// When enabled, users receive a welcome notification when they register a new device.
+    /// </summary>
+    public bool SendRegistrationConfirmation { get; set; }
+
+    /// <summary>
     /// Gets or sets the Jellyseerr base URL configured by the admin.
     /// Example: https://jellyseerr.example.com.
     /// </summary>
     public string? JellyseerrBaseUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the preferred language for push notifications.
+    /// Supported values: "en", "fr", "de", "es", "it".
+    /// Defaults to "en" if not set or invalid.
+    /// </summary>
+    public string PreferredLanguage { get; set; }
 
     /// <summary>
     /// Gets the legacy list of registered users and their device tokens.

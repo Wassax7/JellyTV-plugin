@@ -19,7 +19,8 @@ public sealed class JellyTVEpisodeBatcher
 {
     private readonly ILogger<JellyTVEpisodeBatcher> _logger;
     private readonly JellyTVPushService _pushService;
-    private readonly TimeSpan _window = TimeSpan.FromSeconds(10);
+    private readonly TimeSpan _window = TimeSpan.FromSeconds(30);
+    private readonly TimeSpan _maxWindow = TimeSpan.FromSeconds(120);
     private readonly object _gate = new object();
     private readonly Dictionary<string, Batch> _batches = new Dictionary<string, Batch>(StringComparer.OrdinalIgnoreCase);
 
@@ -57,7 +58,6 @@ public sealed class JellyTVEpisodeBatcher
             return;
         }
 
-        int scheduledVersion;
         lock (_gate)
         {
             if (!_batches.TryGetValue(seriesKey, out var batch))
@@ -67,6 +67,7 @@ public sealed class JellyTVEpisodeBatcher
             }
 
             batch.Count++;
+            batch.LastUpdated = DateTimeOffset.UtcNow;
             batch.SeriesName = string.IsNullOrWhiteSpace(seriesName) ? batch.SeriesName : seriesName;
             if (batch.Count == 1)
             {
@@ -88,106 +89,166 @@ public sealed class JellyTVEpisodeBatcher
                 batch.SingleEpisodeName = null;
                 batch.SingleSeasonNumber = null;
                 batch.SingleEpisodeNumber = null;
+                _logger.LogDebug(
+                    "Episode batch updated: seriesKey={SeriesKey}; newCount={Count}; activeBatches={ActiveBatches}",
+                    seriesKey,
+                    batch.Count,
+                    _batches.Count);
             }
 
-            scheduledVersion = ++batch.Version;
-        }
-
-        _ = FlushAfterDelay(seriesKey, scheduledVersion, _window);
-    }
-
-    private async Task FlushAfterDelay(string key, int version, TimeSpan delay)
-    {
-        try
-        {
-            await Task.Delay(delay).ConfigureAwait(false);
-
-            int count;
-            string name;
-            string? singleEpisodeId;
-            string? singleEpisodeName;
-            int? singleSeasonNumber;
-            int? singleEpisodeNumber;
-            lock (_gate)
+            // Check if batch has been open too long (from first episode) - force flush if exceeds max window
+            var totalElapsed = DateTimeOffset.UtcNow - batch.FirstAdded;
+            if (totalElapsed >= _maxWindow)
             {
-                if (!_batches.TryGetValue(key, out var current))
-                {
-                    return; // already flushed/replaced
-                }
-
-                if (current.Version != version)
-                {
-                    return; // superseded by a newer enqueue
-                }
-
-                count = current.Count;
-                name = current.SeriesName;
-                singleEpisodeId = current.SingleEpisodeId;
-                singleEpisodeName = current.SingleEpisodeName;
-                singleSeasonNumber = current.SingleSeasonNumber;
-                singleEpisodeNumber = current.SingleEpisodeNumber;
-                _batches.Remove(key);
-            }
-
-            if (count <= 0)
-            {
+                _logger.LogInformation(
+                    "Force-flushing long-lived batch: seriesKey={SeriesKey}; totalElapsed={Elapsed}s; count={Count}",
+                    seriesKey,
+                    totalElapsed.TotalSeconds,
+                    batch.Count);
+                // Dispose existing timer and flush immediately
+                batch.FlushTimer?.Dispose();
+                batch.FlushTimer = null;
+                FlushBatch(seriesKey);
                 return;
             }
 
-            // Build message and recipients at send time to respect latest preferences
-            var users = JellyTVUserStore.FilterUsersForEvent(
-                JellyTVUserStore.Load().Select(u => u.UserId),
-                "ItemAdded");
+            // Dispose existing timer and create a new one (true debouncing)
+            // Each new episode resets the countdown
+            batch.FlushTimer?.Dispose();
+            batch.FlushTimer = new Timer(
+                callback: _ => FlushBatch(seriesKey),
+                state: null,
+                dueTime: _window,
+                period: Timeout.InfiniteTimeSpan);
 
             _logger.LogDebug(
-                "Flushing episode batch: seriesKey={SeriesKey}; seriesName={SeriesName}; count={Count}; singleEpisodeId={EpisodeId}; season={Season}; episode={Episode}; users={UserCount}",
-                key,
-                name,
-                count,
-                singleEpisodeId,
-                singleSeasonNumber,
-                singleEpisodeNumber,
-                users.Count);
+                "Batch timer reset: seriesKey={SeriesKey}; count={Count}; windowSeconds={Window}",
+                seriesKey,
+                batch.Count,
+                _window.TotalSeconds);
+        }
+    }
 
-            if (count == 1)
+    private void FlushBatch(string key)
+    {
+        int count;
+        string name;
+        string? singleEpisodeId;
+        string? singleEpisodeName;
+        int? singleSeasonNumber;
+        int? singleEpisodeNumber;
+        int activeBatchesRemaining;
+
+        lock (_gate)
+        {
+            if (!_batches.TryGetValue(key, out var current))
             {
-                var friendlyBody = BuildEpisodeMessage(
-                    name,
-                    singleEpisodeName,
-                    singleSeasonNumber,
-                    singleEpisodeNumber);
-
-                var targetEpisodeId = string.IsNullOrWhiteSpace(singleEpisodeId) ? null : singleEpisodeId;
-
-                _logger.LogInformation(
-                    "Episode push: series={Series}; episodeId={EpisodeId}; users={Users}; season={Season}; episode={Episode}",
-                    name,
-                    targetEpisodeId ?? string.Empty,
-                    users.Count,
-                    singleSeasonNumber,
-                    singleEpisodeNumber);
-                await _pushService.SendEventAsync(
-                    "ItemAdded",
-                    targetEpisodeId,
-                    users,
-                    string.IsNullOrWhiteSpace(name) ? singleEpisodeName : name,
-                    bodyOverride: friendlyBody).ConfigureAwait(false);
-                return;
+                _logger.LogDebug("Batch already flushed or removed: key={Key}", key);
+                return; // already flushed/replaced
             }
 
-            string itemName = string.IsNullOrWhiteSpace(name)
-                ? Localizer.Format("EpisodesNewNoSeries", new Dictionary<string, string> { ["Count"] = count.ToString(CultureInfo.InvariantCulture) })
-                : (count == 1
-                    ? Localizer.Format("EpisodeNewForSeries", new Dictionary<string, string> { ["Series"] = name })
-                    : Localizer.Format("EpisodesNewForSeries", new Dictionary<string, string> { ["Series"] = name, ["Count"] = count.ToString(CultureInfo.InvariantCulture) }));
+            count = current.Count;
+            name = current.SeriesName;
+            singleEpisodeId = current.SingleEpisodeId;
+            singleEpisodeName = current.SingleEpisodeName;
+            singleSeasonNumber = current.SingleSeasonNumber;
+            singleEpisodeNumber = current.SingleEpisodeNumber;
 
-            _logger.LogInformation("Batch push: series={Series}; count={Count}; users={Users}", name, count, users.Count);
-            await _pushService.SendEventAsync("ItemAdded", itemId: null, userIds: users, itemName: itemName).ConfigureAwait(false);
+            // Dispose timer and remove batch from dictionary
+            current.Dispose();
+            _batches.Remove(key);
+            activeBatchesRemaining = _batches.Count;
         }
-        catch (Exception ex)
+
+        if (count <= 0)
         {
-            _logger.LogError(ex, "Error while flushing episode batch: {Message}", ex.Message);
+            return;
         }
+
+        // Execute notification send asynchronously but don't block timer callback
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Build message and recipients at send time to respect latest preferences
+                var users = JellyTVUserStore.FilterUsersForEvent(
+                    JellyTVUserStore.Load().Select(u => u.UserId),
+                    "ItemAdded");
+
+                _logger.LogInformation(
+                    "Flushing episode batch: seriesKey={SeriesKey}; seriesName={SeriesName}; count={Count}; singleEpisodeId={EpisodeId}; season={Season}; episode={Episode}; users={UserCount}; activeBatchesRemaining={Remaining}",
+                    key,
+                    name,
+                    count,
+                    singleEpisodeId,
+                    singleSeasonNumber,
+                    singleEpisodeNumber,
+                    users.Count,
+                    activeBatchesRemaining);
+
+                if (count == 1)
+                {
+                    // Build localized message inline - use only clean metadata to avoid file names
+                    string friendlyBody;
+
+                    if (singleSeasonNumber.HasValue && singleEpisodeNumber.HasValue && !string.IsNullOrWhiteSpace(name))
+                    {
+                        // Best case: series name + season/episode numbers available
+                        friendlyBody = Localizer.Format(
+                            "EpisodeNewForSeriesDetailed",
+                            new Dictionary<string, string>
+                            {
+                                ["Series"] = name,
+                                ["Season"] = singleSeasonNumber.Value.ToString(CultureInfo.InvariantCulture),
+                                ["Episode"] = singleEpisodeNumber.Value.ToString(CultureInfo.InvariantCulture)
+                            });
+                    }
+                    else if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        // Fallback: only series name available, use episode batch format with count=1
+                        friendlyBody = Localizer.Format("EpisodesNewForSeries", new Dictionary<string, string>
+                        {
+                            ["Series"] = name,
+                            ["Count"] = "1"
+                        });
+                    }
+                    else
+                    {
+                        // Last resort: no metadata available
+                        friendlyBody = Localizer.T("ItemAddedGeneric");
+                    }
+
+                    var targetEpisodeId = string.IsNullOrWhiteSpace(singleEpisodeId) ? null : singleEpisodeId;
+
+                    _logger.LogInformation(
+                        "Episode push: series={Series}; episodeId={EpisodeId}; users={Users}; season={Season}; episode={Episode}",
+                        name,
+                        targetEpisodeId ?? string.Empty,
+                        users.Count,
+                        singleSeasonNumber,
+                        singleEpisodeNumber);
+                    await _pushService.SendEventAsync(
+                        "ItemAdded",
+                        targetEpisodeId,
+                        users,
+                        name,
+                        bodyOverride: friendlyBody).ConfigureAwait(false);
+                    return;
+                }
+
+                // Build batch notification message (count is always > 1 in this code path)
+                string itemName = string.IsNullOrWhiteSpace(name)
+                    ? Localizer.Format("EpisodesNewNoSeries", new Dictionary<string, string> { ["Count"] = count.ToString(CultureInfo.InvariantCulture) })
+                    : Localizer.Format("EpisodesNewForSeries", new Dictionary<string, string> { ["Series"] = name, ["Count"] = count.ToString(CultureInfo.InvariantCulture) });
+
+                _logger.LogInformation("Batch push: series={Series}; count={Count}; users={Users}", name, count, users.Count);
+                await _pushService.SendEventAsync("ItemAdded", itemId: null, userIds: users, itemName: itemName).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while flushing episode batch: {Message}", ex.Message);
+            }
+        });
     }
 
     private async Task SendSingleEpisodeFallbackAsync(string episodeId, string seriesName, string episodeDisplayName, int? seasonNumber, int? episodeNumber)
@@ -202,7 +263,31 @@ public sealed class JellyTVEpisodeBatcher
                 return;
             }
 
-            var friendlyBody = BuildEpisodeMessage(seriesName, episodeDisplayName, seasonNumber, episodeNumber);
+            // Build localized message inline - use only clean metadata to avoid file names
+            string friendlyBody;
+
+            if (seasonNumber.HasValue && episodeNumber.HasValue && !string.IsNullOrWhiteSpace(seriesName))
+            {
+                // Best case: series name + season/episode numbers available
+                friendlyBody = Localizer.Format(
+                    "EpisodeNewForSeriesDetailed",
+                    new Dictionary<string, string>
+                    {
+                        ["Series"] = seriesName,
+                        ["Season"] = seasonNumber.Value.ToString(CultureInfo.InvariantCulture),
+                        ["Episode"] = episodeNumber.Value.ToString(CultureInfo.InvariantCulture)
+                    });
+            }
+            else if (!string.IsNullOrWhiteSpace(seriesName))
+            {
+                // Fallback: only series name available
+                friendlyBody = Localizer.Format("ItemAddedNamed", new Dictionary<string, string> { ["Item"] = seriesName });
+            }
+            else
+            {
+                // Last resort: no metadata available
+                friendlyBody = Localizer.T("ItemAddedGeneric");
+            }
 
             _logger.LogInformation(
                 "Episode fallback push: episodeId={EpisodeId}; users={Users}; message={Body}",
@@ -222,59 +307,23 @@ public sealed class JellyTVEpisodeBatcher
         }
     }
 
-    private static string BuildEpisodeMessage(string seriesName, string? fallbackName, int? seasonNumber, int? episodeNumber)
-    {
-        var hasSeries = !string.IsNullOrWhiteSpace(seriesName);
-        if (hasSeries && seasonNumber.HasValue && episodeNumber.HasValue)
-        {
-            return Localizer.Format(
-                "EpisodeNewForSeriesDetailed",
-                new Dictionary<string, string>
-                {
-                    ["Series"] = seriesName,
-                    ["Season"] = seasonNumber.Value.ToString(CultureInfo.InvariantCulture),
-                    ["Episode"] = episodeNumber.Value.ToString(CultureInfo.InvariantCulture)
-                });
-        }
-
-        if (!hasSeries && seasonNumber.HasValue && episodeNumber.HasValue)
-        {
-            return Localizer.Format(
-                "EpisodeNewDetailedNoSeries",
-                new Dictionary<string, string>
-                {
-                    ["Season"] = seasonNumber.Value.ToString(CultureInfo.InvariantCulture),
-                    ["Episode"] = episodeNumber.Value.ToString(CultureInfo.InvariantCulture)
-                });
-        }
-
-        if (hasSeries)
-        {
-            return Localizer.Format(
-                "EpisodeNewForSeries",
-                new Dictionary<string, string>
-                {
-                    ["Series"] = seriesName
-                });
-        }
-
-        return string.IsNullOrWhiteSpace(fallbackName)
-            ? Localizer.T("ItemAddedGeneric")
-            : fallbackName!;
-    }
-
-    private sealed class Batch
+    private sealed class Batch : IDisposable
     {
         public Batch(string seriesName)
         {
             SeriesName = seriesName;
+            var now = DateTimeOffset.UtcNow;
+            FirstAdded = now;
+            LastUpdated = now;
         }
 
         public string SeriesName { get; set; }
 
         public int Count { get; set; }
 
-        public int Version { get; set; }
+        public DateTimeOffset FirstAdded { get; }
+
+        public DateTimeOffset LastUpdated { get; set; }
 
         public string? SingleEpisodeId { get; set; }
 
@@ -283,5 +332,13 @@ public sealed class JellyTVEpisodeBatcher
         public int? SingleSeasonNumber { get; set; }
 
         public int? SingleEpisodeNumber { get; set; }
+
+        public Timer? FlushTimer { get; set; }
+
+        public void Dispose()
+        {
+            FlushTimer?.Dispose();
+            FlushTimer = null;
+        }
     }
 }

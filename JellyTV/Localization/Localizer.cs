@@ -14,18 +14,24 @@ internal static class Localizer
     private static readonly Dictionary<string, string> De = Dictionaries.De;
     private static readonly Dictionary<string, string> Es = Dictionaries.Es;
     private static readonly Dictionary<string, string> It = Dictionaries.It;
+    private static readonly Dictionary<string, string> Pt = Dictionaries.Pt;
+    private static readonly Dictionary<string, string> Hi = Dictionaries.Hi;
 
     private static Dictionary<string, string> Current
     {
         get
         {
-            var code = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName?.ToLowerInvariant();
+            // Use configured language instead of thread culture
+            // This ensures consistent localization regardless of server thread culture
+            var code = Plugin.Instance?.Configuration?.PreferredLanguage?.ToLowerInvariant() ?? "en";
             return code switch
             {
                 "fr" => Fr,
                 "de" => De,
                 "es" => Es,
                 "it" => It,
+                "pt" => Pt,
+                "hi" => Hi,
                 _ => En
             };
         }
@@ -92,9 +98,8 @@ internal static class Localizer
             ["ItemAddedGeneric"] = "New item available",
             ["ItemAddedNamed"] = "{Item} is now available",
             // Episode batch
-            ["EpisodesNewNoSeries"] = "New episodes available ({Count} new)",
-            ["EpisodeNewForSeries"] = "New episode available for {Series}",
-            ["EpisodesNewForSeries"] = "New episodes available for {Series} ({Count} new)",
+            ["EpisodesNewNoSeries"] = "{Count} new episodes available",
+            ["EpisodesNewForSeries"] = "{Count} new episodes available for {Series}",
             ["EpisodeNewForSeriesDetailed"] = "New episode {Episode} from season {Season} available for {Series}",
             ["EpisodeNewDetailedNoSeries"] = "New episode {Episode} from season {Season} available",
         };
@@ -116,9 +121,8 @@ internal static class Localizer
             ["ItemAddedGeneric"] = "Nouvel élément disponible",
             ["ItemAddedNamed"] = "{Item} est maintenant disponible",
             // Episode batch
-            ["EpisodesNewNoSeries"] = "Nouveaux épisodes disponibles ({Count} nouveau(x))",
-            ["EpisodeNewForSeries"] = "Nouvel épisode disponible pour {Series}",
-            ["EpisodesNewForSeries"] = "Nouveaux épisodes disponibles pour {Series} ({Count} nouveaux)",
+            ["EpisodesNewNoSeries"] = "{Count} nouveaux épisodes disponibles",
+            ["EpisodesNewForSeries"] = "{Count} nouveaux épisodes disponibles pour {Series}",
             ["EpisodeNewForSeriesDetailed"] = "Nouvel épisode {Episode} de la saison {Season} disponible pour {Series}",
             ["EpisodeNewDetailedNoSeries"] = "Nouvel épisode {Episode} de la saison {Season} disponible",
         };
@@ -140,9 +144,8 @@ internal static class Localizer
             ["ItemAddedGeneric"] = "Neuer Inhalt verfügbar",
             ["ItemAddedNamed"] = "{Item} ist jetzt verfügbar",
             // Episode batch
-            ["EpisodesNewNoSeries"] = "Neue Folgen verfügbar ({Count} neu)",
-            ["EpisodeNewForSeries"] = "Neue Folge verfügbar für {Series}",
-            ["EpisodesNewForSeries"] = "Neue Folgen verfügbar für {Series} ({Count} neu)",
+            ["EpisodesNewNoSeries"] = "{Count} neue Folgen verfügbar",
+            ["EpisodesNewForSeries"] = "{Count} neue Folgen verfügbar für {Series}",
             ["EpisodeNewForSeriesDetailed"] = "Neue Folge {Episode} aus Staffel {Season} verfügbar für {Series}",
             ["EpisodeNewDetailedNoSeries"] = "Neue Folge {Episode} aus Staffel {Season} verfügbar",
         };
@@ -164,9 +167,8 @@ internal static class Localizer
             ["ItemAddedGeneric"] = "Nuevo contenido disponible",
             ["ItemAddedNamed"] = "{Item} ya está disponible",
             // Episode batch
-            ["EpisodesNewNoSeries"] = "Nuevos episodios disponibles ({Count} nuevos)",
-            ["EpisodeNewForSeries"] = "Nuevo episodio disponible para {Series}",
-            ["EpisodesNewForSeries"] = "Nuevos episodios disponibles para {Series} ({Count} nuevos)",
+            ["EpisodesNewNoSeries"] = "{Count} nuevos episodios disponibles",
+            ["EpisodesNewForSeries"] = "{Count} nuevos episodios disponibles para {Series}",
             ["EpisodeNewForSeriesDetailed"] = "Nuevo episodio {Episode} de la temporada {Season} disponible para {Series}",
             ["EpisodeNewDetailedNoSeries"] = "Nuevo episodio {Episode} de la temporada {Season} disponible",
         };
@@ -188,11 +190,56 @@ internal static class Localizer
             ["ItemAddedGeneric"] = "Nuovo contenuto disponibile",
             ["ItemAddedNamed"] = "{Item} è ora disponibile",
             // Episode batch
-            ["EpisodesNewNoSeries"] = "Nuovi episodi disponibili ({Count} nuovi)",
-            ["EpisodeNewForSeries"] = "Nuovo episodio disponibile per {Series}",
-            ["EpisodesNewForSeries"] = "Nuovi episodi disponibili per {Series} ({Count} nuovi)",
+            ["EpisodesNewNoSeries"] = "{Count} nuovi episodi disponibili",
+            ["EpisodesNewForSeries"] = "{Count} nuovi episodi disponibili per {Series}",
             ["EpisodeNewForSeriesDetailed"] = "Nuovo episodio {Episode} della stagione {Season} disponibile per {Series}",
             ["EpisodeNewDetailedNoSeries"] = "Nuovo episodio {Episode} della stagione {Season} disponibile",
+        };
+
+        public static readonly Dictionary<string, string> Pt = new()
+        {
+            // Generic
+            ["Notification"] = "Notificação",
+            // Registration
+            ["RegistrationBody"] = "Agora você receberá notificações push do JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Reprodução iniciada",
+            ["PlaybackStartedItem"] = "Reprodução iniciada: {Item}",
+            ["PlaybackStartedByUser"] = "{User} começou a assistir {Item}",
+            ["PlaybackStopped"] = "Reprodução parada",
+            ["PlaybackStoppedItem"] = "Reprodução parada: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} parou {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "Novo conteúdo disponível",
+            ["ItemAddedNamed"] = "{Item} está agora disponível",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} novos episódios disponíveis",
+            ["EpisodesNewForSeries"] = "{Count} novos episódios disponíveis para {Series}",
+            ["EpisodeNewForSeriesDetailed"] = "Novo episódio {Episode} da temporada {Season} disponível para {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Novo episódio {Episode} da temporada {Season} disponível",
+        };
+
+        public static readonly Dictionary<string, string> Hi = new()
+        {
+            // Generic
+            ["Notification"] = "सूचना",
+            // Registration
+            ["RegistrationBody"] = "अब आपको JellyTV से पुश सूचनाएं प्राप्त होंगी।",
+            // Playback
+            ["PlaybackStarted"] = "प्लेबैक शुरू हुआ",
+            ["PlaybackStartedItem"] = "प्लेबैक शुरू हुआ: {Item}",
+            ["PlaybackStartedByUser"] = "{User} ने {Item} देखना शुरू किया",
+            ["PlaybackStopped"] = "प्लेबैक रुका",
+            ["PlaybackStoppedItem"] = "प्लेबैक रुका: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} ने {Item} रोक दिया",
+            // Item added
+            ["ItemAddedGeneric"] = "नई सामग्री उपलब्ध है",
+            ["ItemAddedNamed"] = "{Item} अब उपलब्ध है",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} नए एपिसोड उपलब्ध हैं",
+            ["EpisodesNewForSeries"] = "{Series} के लिए {Count} नए एपिसोड उपलब्ध हैं",
+            ["EpisodeNewForSeriesDetailed"] = "{Series} के लिए सीज़न {Season} का नया एपिसोड {Episode} उपलब्ध है",
+            ["EpisodeNewDetailedNoSeries"] = "सीज़न {Season} का नया एपिसोड {Episode} उपलब्ध है",
         };
     }
 }

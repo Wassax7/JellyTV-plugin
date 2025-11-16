@@ -48,7 +48,7 @@ public class JellyTVController : ControllerBase
         var prefs = JellyTVUserStore.GetPreferences(userId);
         return Ok(new
         {
-            userId,
+            UserId = userId,
             ForwardItemAdded = prefs?.ForwardItemAdded,
             ForwardPlaybackStart = prefs?.ForwardPlaybackStart,
             ForwardPlaybackStop = prefs?.ForwardPlaybackStop
@@ -106,13 +106,37 @@ public class JellyTVController : ControllerBase
 
         var result = JellyTVUserStore.UpsertToken(request.UserId, request.Token);
 
-        // Send a confirmation push only if the token is newly registered
-        if (result.IsNewToken)
+        // Send a confirmation push only if the token is newly registered and admin has enabled confirmations
+        if (result.IsNewToken && Plugin.Instance?.Configuration?.SendRegistrationConfirmation == true)
         {
             await _pushService.SendRegistrationConfirmationAsync(request.UserId, request.Token).ConfigureAwait(false);
         }
 
         return Ok(new { status = "ok", userId = request.UserId, tokens = result.User.Tokens.ToArray() });
+    }
+
+    /// <summary>
+    /// Unregisters a device token for a Jellyfin user.
+    /// </summary>
+    /// <param name="pluginGuid">The plugin guid from the route.</param>
+    /// <param name="request">The unregistration payload.</param>
+    /// <returns>HTTP 200 on success.</returns>
+    [HttpPost("unregister")]
+    public ActionResult Unregister([FromRoute] string pluginGuid, [FromBody] UnregisterRequest request)
+    {
+        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        {
+            return NotFound();
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Token))
+        {
+            return BadRequest("token is required");
+        }
+
+        var removed = JellyTVUserStore.RemoveToken(request.Token);
+
+        return Ok(new { status = "ok", removed });
     }
 
     /// <summary>

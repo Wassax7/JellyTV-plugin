@@ -14,7 +14,7 @@
                 <div style="margin: 0 0 20px 0; text-align: center;">
                     <picture>
                         <source srcset="https://plugin.jellytv.app/logo_desk.png" type="image/jpeg"
-                            media="(min-width:1440px)">
+                            media="(min-width:768px)">
                         <img loading="lazy" src="https://plugin.jellytv.app/logo.png" alt="JellyTV"
                             style="max-width: 100%; height: auto; border-radius: 8px;">
                     </picture>
@@ -60,6 +60,29 @@
                             <span>Forward Playback Stop events</span>
                         </label>
                     </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="SendRegistrationConfirmation" type="checkbox" is="emby-checkbox" />
+                            <span>Send welcome notification on device registration</span>
+                        </label>
+                        <div class="fieldDescription">When enabled, users receive a confirmation notification when they register a new device.</div>
+                    </div>
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Language</h2>
+                        <div class="fieldDescription">Select the language for push notifications.</div>
+                        <div class="selectContainer">
+                            <label class="inputLabel" for="PreferredLanguage">Notification Language</label>
+                            <select id="PreferredLanguage" is="emby-select">
+                                <option value="en">English</option>
+                                <option value="fr">Français</option>
+                                <option value="de">Deutsch</option>
+                                <option value="es">Español</option>
+                                <option value="it">Italiano</option>
+                                <option value="pt">Português</option>
+                                <option value="hi">हिन्दी (Hindi)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="verticalSection">
                         <h2 class="sectionTitle">Jellyseerr</h2>
                         <div class="fieldDescription">Base URL to your Jellyseerr instance (e.g.,
@@ -104,6 +127,7 @@
                     ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId)
                         .then(function (config) {
                             document.querySelector('#JellyseerrBaseUrl').value = (config.JellyseerrBaseUrl || '');
+                            document.querySelector('#PreferredLanguage').value = (config.PreferredLanguage || 'en');
                             document.querySelector('#ForwardItemAdded').checked = config.ForwardItemAdded === true;
                             var playbackStartEnabled = (config.ForwardPlaybackStart === true);
                             var playbackStopEnabled = (config.ForwardPlaybackStop === true);
@@ -114,6 +138,7 @@
                             }
                             document.querySelector('#ForwardPlaybackStart').checked = playbackStartEnabled;
                             document.querySelector('#ForwardPlaybackStop').checked = playbackStopEnabled;
+                            document.querySelector('#SendRegistrationConfirmation').checked = (config.SendRegistrationConfirmation !== false);
                             return renderRegisteredUsers();
                         })
                         .catch(function () { /* ignore */ })
@@ -192,9 +217,11 @@
                     ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
                         var baseUrl = (document.querySelector('#JellyseerrBaseUrl').value || '').trim();
                         config.JellyseerrBaseUrl = baseUrl;
+                        config.PreferredLanguage = document.querySelector('#PreferredLanguage').value || 'en';
                         config.ForwardItemAdded = document.querySelector('#ForwardItemAdded').checked;
                         config.ForwardPlaybackStart = document.querySelector('#ForwardPlaybackStart').checked;
                         config.ForwardPlaybackStop = document.querySelector('#ForwardPlaybackStop').checked;
+                        config.SendRegistrationConfirmation = document.querySelector('#SendRegistrationConfirmation').checked;
                         ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config)
                             .then(function (result) {
                                 Dashboard.processPluginConfigurationUpdateResult(result);

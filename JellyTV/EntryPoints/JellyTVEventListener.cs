@@ -176,8 +176,22 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
 
         if (item is Episode ep)
         {
+            // Delay episode processing to allow Jellyfin's metadata refresh to complete
+            // This gives time for Season creation and ParentIndexNumber/IndexNumber population
+            await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+
+            // Re-fetch the episode to get updated metadata after Season creation
+            var refreshedItem = _libraryManager.GetItemById(ep.Id);
+            if (refreshedItem is not Episode refreshedEpisode)
+            {
+                _logger.LogWarning(
+                    "Episode disappeared or changed type after metadata delay: episodeId={EpisodeId}",
+                    ep.Id.ToString("N"));
+                return;
+            }
+
             // Batch per series within a short window while still tracking the specific episode that triggered the event.
-            var identity = ResolveEpisodeBatchIdentity(ep);
+            var identity = ResolveEpisodeBatchIdentity(refreshedEpisode);
             _logger.LogDebug(
                 "Queueing episode ItemAdded: episodeId={EpisodeId}; seriesKey={SeriesKey}; seriesName={SeriesName}; displayName={DisplayName}; season={Season}; episode={Episode}; recipients={Recipients}",
                 identity.EpisodeId,
@@ -227,26 +241,53 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
     private static EpisodeBatchIdentity ResolveEpisodeBatchIdentity(Episode episode)
     {
         string key;
+
+        // Primary: Use episode.SeriesId if populated
         if (episode.SeriesId != Guid.Empty)
         {
             key = episode.SeriesId.ToString("N");
         }
         else
         {
-            var rawSeriesName = episode.SeriesName;
-            if (!string.IsNullOrWhiteSpace(rawSeriesName))
+            // Secondary: Call FindSeriesId() to navigate parent hierarchy
+            var foundSeriesId = episode.FindSeriesId();
+            if (foundSeriesId != Guid.Empty)
             {
-                key = rawSeriesName;
+                key = foundSeriesId.ToString("N");
             }
             else
             {
-                key = episode.Id.ToString("N");
+                // Tertiary: Use SeriesName string property
+                var rawSeriesName = episode.SeriesName;
+                if (!string.IsNullOrWhiteSpace(rawSeriesName))
+                {
+                    // Disambiguate same-named series by including season ID if available
+                    // This prevents episodes from different series with identical names from batching together
+                    var seasonSuffix = episode.SeasonId != Guid.Empty
+                        ? $"|{episode.SeasonId:N}"
+                        : string.Empty;
+                    key = rawSeriesName + seasonSuffix;
+                }
+                else
+                {
+                    // Last resort: Use episode ID (each episode gets separate batch)
+                    key = episode.Id.ToString("N");
+                }
             }
         }
 
+        // Enhanced series name resolution with file name detection and fallback chain
         var seriesName = episode.SeriesName;
+
+        // Check if SeriesName looks like a file name (e.g., "Beastars.E01" or has file extensions)
+        if (!string.IsNullOrWhiteSpace(seriesName) && LooksLikeFileName(seriesName))
+        {
+            seriesName = null; // Force fallback chain
+        }
+
         if (string.IsNullOrWhiteSpace(seriesName))
         {
+            // Fallback chain: Series.Name → Season.SeriesName → FindSeriesName() → Season.Name
             var series = episode.Series;
             if (!string.IsNullOrWhiteSpace(series?.Name))
             {
@@ -255,9 +296,21 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             else
             {
                 var season = episode.Season;
-                if (!string.IsNullOrWhiteSpace(season?.Name))
+                if (!string.IsNullOrWhiteSpace(season?.SeriesName))
                 {
-                    seriesName = season.Name;
+                    seriesName = season.SeriesName;
+                }
+                else
+                {
+                    var foundSeriesName = episode.FindSeriesName();
+                    if (!string.IsNullOrWhiteSpace(foundSeriesName))
+                    {
+                        seriesName = foundSeriesName;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(season?.Name))
+                    {
+                        seriesName = season.Name;
+                    }
                 }
             }
         }
@@ -269,6 +322,20 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             seriesName = displayName;
         }
 
+        // Enhanced season/episode number resolution with Season object fallback
+        var seasonNumber = episode.ParentIndexNumber;
+        var episodeNumber = episode.IndexNumber;
+
+        // Fallback: Try to get season number from Season object if ParentIndexNumber is null
+        if (!seasonNumber.HasValue)
+        {
+            var season = episode.Season;
+            if (season?.IndexNumber != null)
+            {
+                seasonNumber = season.IndexNumber;
+            }
+        }
+
         var episodeId = episode.Id != Guid.Empty ? episode.Id.ToString("N") : string.Empty;
 
         return new EpisodeBatchIdentity(
@@ -276,8 +343,47 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             seriesName ?? string.Empty,
             episodeId,
             displayName,
-            episode.ParentIndexNumber,
-            episode.IndexNumber);
+            seasonNumber,
+            episodeNumber);
+    }
+
+    /// <summary>
+    /// Checks if a string looks like a file name rather than a clean series/episode name.
+    /// </summary>
+    /// <param name="name">The name to check.</param>
+    /// <returns>True if the name appears to be a file name.</returns>
+    private static bool LooksLikeFileName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        // Check for common video file extensions
+        if (name.Contains(".mkv", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains(".mp4", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains(".avi", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains(".m4v", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains(".wmv", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Check for dot-separated format without spaces (e.g., "Beastars.E01" or "Show.Name.S01E05")
+        // Clean series names typically have spaces, file names use dots as separators
+        if (name.Contains('.', StringComparison.Ordinal) && !name.Contains(' ', StringComparison.Ordinal))
+        {
+            // Additional check: Look for episode patterns like .E01 or .S01E05
+            if (System.Text.RegularExpressions.Regex.IsMatch(
+                name,
+                @"\.[Ee]\d{1,4}|[Ss]\d{1,4}[Ee]\d{1,4}",
+                System.Text.RegularExpressions.RegexOptions.None))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private readonly record struct EpisodeBatchIdentity(
