@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Jellyfin.Data;
+using Jellyfin.Database.Implementations.Enums;
 using Jellyfin.Plugin.JellyTV.Api.Models;
 using Jellyfin.Plugin.JellyTV.Services;
 using MediaBrowser.Controller.Authentication;
@@ -18,9 +20,12 @@ namespace Jellyfin.Plugin.JellyTV.Api;
 [Route("JellyTV")]
 public sealed class JellyTVNotificationsController : ControllerBase
 {
+    private static readonly TimeSpan RateLimitWindow = TimeSpan.FromSeconds(60);
+
     private readonly JellyTVPushService _pushService;
     private readonly IUserManager _userManager;
     private readonly IAuthorizationContext _authorizationContext;
+    private readonly RateLimitService _rateLimitService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTVNotificationsController"/> class.
@@ -28,11 +33,17 @@ public sealed class JellyTVNotificationsController : ControllerBase
     /// <param name="pushService">The push service.</param>
     /// <param name="userManager">The user manager to resolve usernames.</param>
     /// <param name="authorizationContext">The authorization context to validate access tokens.</param>
-    public JellyTVNotificationsController(JellyTVPushService pushService, IUserManager userManager, IAuthorizationContext authorizationContext)
+    /// <param name="rateLimitService">The rate limit service.</param>
+    public JellyTVNotificationsController(
+        JellyTVPushService pushService,
+        IUserManager userManager,
+        IAuthorizationContext authorizationContext,
+        RateLimitService rateLimitService)
     {
         _pushService = pushService;
         _userManager = userManager;
         _authorizationContext = authorizationContext;
+        _rateLimitService = rateLimitService;
     }
 
     /// <summary>
@@ -73,37 +84,67 @@ public sealed class JellyTVNotificationsController : ControllerBase
             return Unauthorized("Invalid or expired authentication token");
         }
 
+        var adminUser = authorization.UserId != Guid.Empty ? _userManager.GetUserById(authorization.UserId) : null;
+        if (adminUser == null || !adminUser.HasPermission(PermissionKind.IsAdministrator))
+        {
+            return Forbid("Admin access required to send notifications");
+        }
+
+        var rateLimitKey = $"notifications:{authorization.UserId:N}";
+        if (!_rateLimitService.TryAcquire(rateLimitKey, 20, RateLimitWindow))
+        {
+            var retryAfter = _rateLimitService.GetRetryAfterSeconds(rateLimitKey, RateLimitWindow);
+            Response.Headers["Retry-After"] = retryAfter.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return StatusCode(429, new { error = "Too many notification requests", retryAfter });
+        }
+
+        const int MaxTitleLength = 200;
+        const int MaxBodyLength = 4000;
+
         int sent = 0;
+        int skipped = 0;
         foreach (var req in requests)
         {
             var title = (req.Title ?? string.Empty).Trim();
             var body = (req.Body ?? string.Empty).Trim();
             var username = (req.Username ?? string.Empty).Trim();
 
+            if (title.Length > MaxTitleLength)
+            {
+                title = title.Substring(0, MaxTitleLength);
+            }
+
+            if (body.Length > MaxBodyLength)
+            {
+                body = body.Substring(0, MaxBodyLength);
+            }
+
             IEnumerable<string> targets;
             if (string.IsNullOrWhiteSpace(username))
             {
-                // Broadcast to all registered users
                 targets = JellyTVUserStore.Load().Select(u => u.UserId);
             }
             else
             {
-                // Resolve username to Jellyfin user id (N format). Fallback: treat as already-normalized id.
                 var user = _userManager.GetUserByName(username);
-                if (user != null)
+                if (user == null && Guid.TryParse(username, out var userId))
                 {
-                    targets = new[] { user.Id.ToString("N") };
+                    user = _userManager.GetUserById(userId);
                 }
-                else
+
+                if (user == null)
                 {
-                    targets = new[] { username.ToLowerInvariant().Replace("-", string.Empty, StringComparison.Ordinal) };
+                    skipped++;
+                    continue;
                 }
+
+                targets = new[] { user.Id.ToString("N") };
             }
 
             await _pushService.SendCustomAsync(title, body, targets).ConfigureAwait(false);
             sent++;
         }
 
-        return Ok(new { status = "ok", processed = sent });
+        return Ok(new { status = "ok", processed = sent, skipped });
     }
 }

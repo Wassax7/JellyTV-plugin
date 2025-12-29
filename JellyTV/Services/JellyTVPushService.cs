@@ -297,14 +297,11 @@ public sealed class JellyTVPushService
 
     private static string MaskToken(string token)
     {
-        if (string.IsNullOrEmpty(token) || token.Length < 8)
+        if (string.IsNullOrEmpty(token) || token.Length < 4)
         {
             return "***";
         }
 
-        var start = token.AsSpan(0, 4);
-        var end = token.AsSpan(token.Length - 4, 4);
-        var mask = new string('*', token.Length - 8).AsSpan();
-        return string.Concat(start, mask, end);
+        return string.Concat("***", token.AsSpan(token.Length - 4));
     }
 }

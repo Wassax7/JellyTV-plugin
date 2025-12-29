@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using Jellyfin.Plugin.JellyTV.Utilities;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.JellyTV.Configuration;
@@ -25,6 +26,8 @@ public enum SomeOptions
 /// </summary>
 public class PluginConfiguration : BasePluginConfiguration
 {
+    private string? _jellyseerrBaseUrl;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginConfiguration"/> class.
     /// </summary>
@@ -65,8 +68,17 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>
     /// Gets or sets the Jellyseerr base URL configured by the admin.
     /// Example: https://jellyseerr.example.com.
+    /// URL is validated on set; invalid URLs are rejected.
     /// </summary>
-    public string? JellyseerrBaseUrl { get; set; }
+    public string? JellyseerrBaseUrl
+    {
+        get => _jellyseerrBaseUrl;
+        set
+        {
+            var (isValid, normalized, _) = UrlValidator.ValidateUrl(value);
+            _jellyseerrBaseUrl = isValid ? normalized : null;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the preferred language for push notifications.

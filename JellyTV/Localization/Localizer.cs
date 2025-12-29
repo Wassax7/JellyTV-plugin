@@ -16,6 +16,11 @@ internal static class Localizer
     private static readonly Dictionary<string, string> It = Dictionaries.It;
     private static readonly Dictionary<string, string> Pt = Dictionaries.Pt;
     private static readonly Dictionary<string, string> Hi = Dictionaries.Hi;
+    private static readonly Dictionary<string, string> Ar = Dictionaries.Ar;
+    private static readonly Dictionary<string, string> Zh = Dictionaries.Zh;
+    private static readonly Dictionary<string, string> Nl = Dictionaries.Nl;
+    private static readonly Dictionary<string, string> Pl = Dictionaries.Pl;
+    private static readonly Dictionary<string, string> Sv = Dictionaries.Sv;
 
     private static Dictionary<string, string> Current
     {
@@ -32,6 +37,11 @@ internal static class Localizer
                 "it" => It,
                 "pt" => Pt,
                 "hi" => Hi,
+                "ar" => Ar,
+                "zh" => Zh,
+                "nl" => Nl,
+                "pl" => Pl,
+                "sv" => Sv,
                 _ => En
             };
         }
@@ -240,6 +250,121 @@ internal static class Localizer
             ["EpisodesNewForSeries"] = "{Series} के लिए {Count} नए एपिसोड उपलब्ध हैं",
             ["EpisodeNewForSeriesDetailed"] = "{Series} के लिए सीज़न {Season} का नया एपिसोड {Episode} उपलब्ध है",
             ["EpisodeNewDetailedNoSeries"] = "सीज़न {Season} का नया एपिसोड {Episode} उपलब्ध है",
+        };
+
+        public static readonly Dictionary<string, string> Ar = new()
+        {
+            // Generic
+            ["Notification"] = "إشعار",
+            // Registration
+            ["RegistrationBody"] = "ستتلقى الآن إشعارات من JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "بدأ التشغيل",
+            ["PlaybackStartedItem"] = "بدأ التشغيل: {Item}",
+            ["PlaybackStartedByUser"] = "{User} بدأ مشاهدة {Item}",
+            ["PlaybackStopped"] = "توقف التشغيل",
+            ["PlaybackStoppedItem"] = "توقف التشغيل: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} أوقف {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "محتوى جديد متاح",
+            ["ItemAddedNamed"] = "{Item} متاح الآن",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} حلقات جديدة متاحة",
+            ["EpisodesNewForSeries"] = "{Count} حلقات جديدة متاحة لـ {Series}",
+            ["EpisodeNewForSeriesDetailed"] = "حلقة جديدة {Episode} من الموسم {Season} متاحة لـ {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "حلقة جديدة {Episode} من الموسم {Season} متاحة",
+        };
+
+        public static readonly Dictionary<string, string> Zh = new()
+        {
+            // Generic
+            ["Notification"] = "通知",
+            // Registration
+            ["RegistrationBody"] = "您现在将收到来自 JellyTV 的推送通知。",
+            // Playback
+            ["PlaybackStarted"] = "开始播放",
+            ["PlaybackStartedItem"] = "开始播放：{Item}",
+            ["PlaybackStartedByUser"] = "{User} 开始观看 {Item}",
+            ["PlaybackStopped"] = "停止播放",
+            ["PlaybackStoppedItem"] = "停止播放：{Item}",
+            ["PlaybackStoppedByUser"] = "{User} 停止了 {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "新内容可用",
+            ["ItemAddedNamed"] = "{Item} 现已可用",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} 集新剧集可用",
+            ["EpisodesNewForSeries"] = "{Series} 有 {Count} 集新剧集可用",
+            ["EpisodeNewForSeriesDetailed"] = "{Series} 第 {Season} 季第 {Episode} 集现已可用",
+            ["EpisodeNewDetailedNoSeries"] = "第 {Season} 季第 {Episode} 集现已可用",
+        };
+
+        public static readonly Dictionary<string, string> Nl = new()
+        {
+            // Generic
+            ["Notification"] = "Melding",
+            // Registration
+            ["RegistrationBody"] = "Je ontvangt nu pushmeldingen van JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Afspelen gestart",
+            ["PlaybackStartedItem"] = "Afspelen gestart: {Item}",
+            ["PlaybackStartedByUser"] = "{User} is begonnen met kijken naar {Item}",
+            ["PlaybackStopped"] = "Afspelen gestopt",
+            ["PlaybackStoppedItem"] = "Afspelen gestopt: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} heeft {Item} gestopt",
+            // Item added
+            ["ItemAddedGeneric"] = "Nieuwe inhoud beschikbaar",
+            ["ItemAddedNamed"] = "{Item} is nu beschikbaar",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} nieuwe afleveringen beschikbaar",
+            ["EpisodesNewForSeries"] = "{Count} nieuwe afleveringen beschikbaar voor {Series}",
+            ["EpisodeNewForSeriesDetailed"] = "Nieuwe aflevering {Episode} van seizoen {Season} beschikbaar voor {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nieuwe aflevering {Episode} van seizoen {Season} beschikbaar",
+        };
+
+        public static readonly Dictionary<string, string> Pl = new()
+        {
+            // Generic
+            ["Notification"] = "Powiadomienie",
+            // Registration
+            ["RegistrationBody"] = "Będziesz teraz otrzymywać powiadomienia push z JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Rozpoczęto odtwarzanie",
+            ["PlaybackStartedItem"] = "Rozpoczęto odtwarzanie: {Item}",
+            ["PlaybackStartedByUser"] = "{User} rozpoczął oglądanie {Item}",
+            ["PlaybackStopped"] = "Zatrzymano odtwarzanie",
+            ["PlaybackStoppedItem"] = "Zatrzymano odtwarzanie: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} zatrzymał {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "Nowa zawartość dostępna",
+            ["ItemAddedNamed"] = "{Item} jest teraz dostępny",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} nowych odcinków dostępnych",
+            ["EpisodesNewForSeries"] = "{Count} nowych odcinków dostępnych dla {Series}",
+            ["EpisodeNewForSeriesDetailed"] = "Nowy odcinek {Episode} z sezonu {Season} dostępny dla {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nowy odcinek {Episode} z sezonu {Season} dostępny",
+        };
+
+        public static readonly Dictionary<string, string> Sv = new()
+        {
+            // Generic
+            ["Notification"] = "Avisering",
+            // Registration
+            ["RegistrationBody"] = "Du kommer nu att få push-aviseringar från JellyTV.",
+            // Playback
+            ["PlaybackStarted"] = "Uppspelning startad",
+            ["PlaybackStartedItem"] = "Uppspelning startad: {Item}",
+            ["PlaybackStartedByUser"] = "{User} har börjat titta på {Item}",
+            ["PlaybackStopped"] = "Uppspelning stoppad",
+            ["PlaybackStoppedItem"] = "Uppspelning stoppad: {Item}",
+            ["PlaybackStoppedByUser"] = "{User} har stoppat {Item}",
+            // Item added
+            ["ItemAddedGeneric"] = "Nytt innehåll tillgängligt",
+            ["ItemAddedNamed"] = "{Item} är nu tillgängligt",
+            // Episode batch
+            ["EpisodesNewNoSeries"] = "{Count} nya avsnitt tillgängliga",
+            ["EpisodesNewForSeries"] = "{Count} nya avsnitt tillgängliga för {Series}",
+            ["EpisodeNewForSeriesDetailed"] = "Nytt avsnitt {Episode} från säsong {Season} tillgängligt för {Series}",
+            ["EpisodeNewDetailedNoSeries"] = "Nytt avsnitt {Episode} från säsong {Season} tillgängligt",
         };
     }
 }

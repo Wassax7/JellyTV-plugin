@@ -2,6 +2,7 @@ using Jellyfin.Plugin.JellyTV.EntryPoints;
 using Jellyfin.Plugin.JellyTV.Services;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Plugin.JellyTV;
@@ -17,8 +18,11 @@ public sealed class ServiceRegistration : IPluginServiceRegistrator
     /// <param name="serviceCollection">The service collection.</param>
     public void RegisterServices(IServiceCollection serviceCollection)
     {
+        serviceCollection.AddDataProtection().SetApplicationName("JellyTV");
+        serviceCollection.AddSingleton<JellyTVTokenEncryption>();
         serviceCollection.AddSingleton<JellyTVPushService>();
         serviceCollection.AddSingleton<JellyTVEpisodeBatcher>();
+        serviceCollection.AddSingleton<RateLimitService>();
         serviceCollection.AddHostedService<JellyTVEventListener>();
     }
 

@@ -35,13 +35,23 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
     /// <param name="logger">The logger instance.</param>
     /// <param name="pushService">The push service used to send notifications.</param>
     /// <param name="episodeBatcher">The batcher that aggregates closely-timed episode additions.</param>
-    public JellyTVEventListener(ISessionManager sessionManager, ILibraryManager libraryManager, ILogger<JellyTVEventListener> logger, JellyTVPushService pushService, JellyTVEpisodeBatcher episodeBatcher)
+    /// <param name="tokenEncryption">The token encryption service for securing stored tokens.</param>
+    public JellyTVEventListener(
+        ISessionManager sessionManager,
+        ILibraryManager libraryManager,
+        ILogger<JellyTVEventListener> logger,
+        JellyTVPushService pushService,
+        JellyTVEpisodeBatcher episodeBatcher,
+        JellyTVTokenEncryption tokenEncryption)
     {
         _sessionManager = sessionManager;
         _libraryManager = libraryManager;
         _logger = logger;
         _pushService = pushService;
         _episodeBatcher = episodeBatcher;
+
+        // Initialize the static user store with the encryption service
+        JellyTVUserStore.SetEncryptionService(tokenEncryption);
     }
 
     /// <inheritdoc />

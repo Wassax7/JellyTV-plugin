@@ -15,6 +15,42 @@ internal static class JellyTVUserStore
 {
     private const string FileName = "registered-users.json";
     private static Dictionary<string, JellyTVUserPreferences>? _preferencesCache;
+    private static JellyTVTokenEncryption? _tokenEncryption;
+
+    /// <summary>
+    /// Sets the token encryption service for encrypting/decrypting stored tokens.
+    /// Should be called during service initialization.
+    /// </summary>
+    /// <param name="encryption">The encryption service instance.</param>
+    public static void SetEncryptionService(JellyTVTokenEncryption encryption)
+    {
+        _tokenEncryption = encryption;
+    }
+
+    private static string EncryptToken(string plainToken)
+    {
+        if (_tokenEncryption == null || string.IsNullOrWhiteSpace(plainToken))
+        {
+            return plainToken;
+        }
+
+        return _tokenEncryption.Encrypt(plainToken);
+    }
+
+    private static string? DecryptToken(string storedToken)
+    {
+        if (string.IsNullOrWhiteSpace(storedToken))
+        {
+            return storedToken;
+        }
+
+        if (_tokenEncryption == null)
+        {
+            return JellyTVTokenEncryption.IsPlaintextToken(storedToken) ? storedToken : null;
+        }
+
+        return _tokenEncryption.TryDecrypt(storedToken);
+    }
 
     private static string NormalizeUserId(string userId)
     {
@@ -108,9 +144,10 @@ internal static class JellyTVUserStore
                 {
                     foreach (var t in r.Tokens)
                     {
-                        if (!string.IsNullOrWhiteSpace(t) && !user.Tokens.Any(existing => string.Equals(existing, t, StringComparison.Ordinal)))
+                        var decrypted = DecryptToken(t);
+                        if (!string.IsNullOrWhiteSpace(decrypted) && !user.Tokens.Any(existing => string.Equals(existing, decrypted, StringComparison.Ordinal)))
                         {
-                            user.Tokens.Add(t);
+                            user.Tokens.Add(decrypted);
                         }
                     }
                 }
@@ -153,9 +190,13 @@ internal static class JellyTVUserStore
                 {
                     foreach (var token in user.Tokens)
                     {
-                        if (!string.IsNullOrWhiteSpace(token) && !record.Tokens.Any(existing => string.Equals(existing, token, StringComparison.OrdinalIgnoreCase)))
+                        if (!string.IsNullOrWhiteSpace(token))
                         {
-                            record.Tokens.Add(token);
+                            var encrypted = EncryptToken(token);
+                            if (!record.Tokens.Any(existing => string.Equals(existing, encrypted, StringComparison.Ordinal)))
+                            {
+                                record.Tokens.Add(encrypted);
+                            }
                         }
                     }
                 }
@@ -364,6 +405,42 @@ internal static class JellyTVUserStore
         }
 
         return removed;
+    }
+
+    /// <summary>
+    /// Removes a user and all their device tokens from the store.
+    /// </summary>
+    /// <param name="userId">The user ID to remove.</param>
+    /// <returns>True if the user was found and removed, false otherwise.</returns>
+    public static bool RemoveUser(string userId)
+    {
+        try
+        {
+            var normalizedId = NormalizeUserId(userId);
+            if (string.IsNullOrWhiteSpace(normalizedId))
+            {
+                return false;
+            }
+
+            var users = Load();
+            var initialCount = users.Count;
+            users.RemoveAll(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase));
+
+            if (users.Count == initialCount)
+            {
+                return false;
+            }
+
+            // Also remove from preferences cache
+            _preferencesCache?.Remove(normalizedId);
+
+            Save(users);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public static List<string> FilterUsersForEvent(IEnumerable<string> userIds, string eventName)
