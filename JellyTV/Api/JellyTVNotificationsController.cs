@@ -84,10 +84,15 @@ public sealed class JellyTVNotificationsController : ControllerBase
             return Unauthorized("Invalid or expired authentication token");
         }
 
-        var adminUser = authorization.UserId != Guid.Empty ? _userManager.GetUserById(authorization.UserId) : null;
-        if (adminUser == null || !adminUser.HasPermission(PermissionKind.IsAdministrator))
+        var isApiKey = authorization.UserId == Guid.Empty && authorization.HasToken && authorization.IsAuthenticated;
+
+        if (!isApiKey)
         {
-            return Forbid("Admin access required to send notifications");
+            var adminUser = _userManager.GetUserById(authorization.UserId);
+            if (adminUser == null || !adminUser.HasPermission(PermissionKind.IsAdministrator))
+            {
+                return Forbid("Admin access required to send notifications");
+            }
         }
 
         var rateLimitKey = $"notifications:{authorization.UserId:N}";
