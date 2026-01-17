@@ -1,12 +1,12 @@
 ---
 name: "JellyTV"
 guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
-version: "0.3.1"
+version: "0.3.2"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
-overview: "Forward Jellyfin session and library alerts to JellyTV."
+overview: "Push notifications for the JellyTV iOS app"
 description: >
-  Forward Jellyfin session and library alerts to JellyTV.
+  Send push notifications to the JellyTV iOS app when media is added to your library or playback starts/stops. Supports per-user preferences and Jellyseerr webhook integration.
 category: "General"
 owner: "jellyfin"
 artifacts:

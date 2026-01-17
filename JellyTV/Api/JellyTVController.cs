@@ -69,11 +69,11 @@ public class JellyTVController : ControllerBase
     }
 
     /// <summary>
-    /// Gets per-user delivery preferences for JellyTV events.
+    /// Gets per-user delivery preferences for JellyTV events along with admin settings.
     /// </summary>
     /// <param name="pluginGuid">The plugin guid from the route.</param>
     /// <param name="userId">The Jellyfin user id.</param>
-    /// <returns>HTTP 200 with the preferences JSON.</returns>
+    /// <returns>HTTP 200 with the preferences JSON including admin settings.</returns>
     [HttpGet("preferences/{userId}")]
     public ActionResult GetPreferences([FromRoute] string pluginGuid, [FromRoute] string userId)
     {
@@ -87,10 +87,17 @@ public class JellyTVController : ControllerBase
             return BadRequest("userId is required");
         }
 
+        var config = Plugin.Instance?.Configuration;
         var prefs = JellyTVUserStore.GetPreferences(userId);
         return Ok(new
         {
             UserId = userId,
+            AdminSettings = new
+            {
+                ForwardItemAdded = config?.ForwardItemAdded ?? true,
+                ForwardPlaybackStart = config?.ForwardPlaybackStart ?? false,
+                ForwardPlaybackStop = config?.ForwardPlaybackStop ?? false
+            },
             ForwardItemAdded = prefs?.ForwardItemAdded,
             ForwardPlaybackStart = prefs?.ForwardPlaybackStart,
             ForwardPlaybackStop = prefs?.ForwardPlaybackStop

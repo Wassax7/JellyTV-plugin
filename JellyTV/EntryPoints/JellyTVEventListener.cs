@@ -120,13 +120,20 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             }
         }
 
-        // Send to all registered users, honoring per-user preferences
+        // Send to all registered users except the actor, honoring per-user preferences
         var candidateIds = Services.JellyTVUserStore.Load()
             .Select(u => u.UserId);
         var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStart");
+
+        // Exclude the user who triggered the playback from receiving the notification
+        if (!string.IsNullOrEmpty(actorUid))
+        {
+            userIds = userIds.Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
         if (userIds.Count == 0)
         {
-            _logger.LogDebug("PlaybackStart event skipped: no opted-in recipients.");
+            _logger.LogDebug("PlaybackStart event skipped: no opted-in recipients (excluding actor).");
             return;
         }
 
@@ -144,12 +151,23 @@ public sealed class JellyTVEventListener : IHostedService, IDisposable
             return;
         }
 
+        // Get the actor's user ID to exclude them from notifications
+        var actorId = e.Session?.UserId ?? Guid.Empty;
+        var actorUid = actorId == Guid.Empty ? string.Empty : actorId.ToString("N");
+
         var candidateIds = Services.JellyTVUserStore.Load()
             .Select(u => u.UserId);
         var userIds = Services.JellyTVUserStore.FilterUsersForEvent(candidateIds, "PlaybackStop");
+
+        // Exclude the user who triggered the playback stop from receiving the notification
+        if (!string.IsNullOrEmpty(actorUid))
+        {
+            userIds = userIds.Where(uid => !string.Equals(uid, actorUid, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
         if (userIds.Count == 0)
         {
-            _logger.LogDebug("PlaybackStop event skipped: no opted-in recipients.");
+            _logger.LogDebug("PlaybackStop event skipped: no opted-in recipients (excluding actor).");
             return;
         }
 
