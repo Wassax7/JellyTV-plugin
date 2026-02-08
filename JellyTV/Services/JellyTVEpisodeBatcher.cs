@@ -242,7 +242,7 @@ public sealed class JellyTVEpisodeBatcher
                     : Localizer.Format("EpisodesNewForSeries", new Dictionary<string, string> { ["Series"] = name, ["Count"] = count.ToString(CultureInfo.InvariantCulture) });
 
                 _logger.LogInformation("Batch push: series={Series}; count={Count}; users={Users}", name, count, users.Count);
-                await _pushService.SendEventAsync("ItemAdded", itemId: null, userIds: users, itemName: itemName).ConfigureAwait(false);
+                await _pushService.SendEventAsync("ItemAdded", itemId: null, userIds: users, itemName: name, bodyOverride: itemName).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
