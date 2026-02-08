@@ -1,7 +1,7 @@
 ---
 name: "JellyTV"
 guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
-version: "0.3.2"
+version: "0.3.3"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Push notifications for the JellyTV iOS app"
