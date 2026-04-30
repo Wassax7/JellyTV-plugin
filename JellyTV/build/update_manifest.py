@@ -45,6 +45,7 @@ def main() -> None:
 
     version_entry = {
         "version": env("VERSION"),
+        "changelog": env("CHANGELOG"),
         "targetAbi": env("TARGET_ABI"),
         "sourceUrl": env("DOWNLOAD_URL"),
         "checksum": env("CHECKSUM"),
@@ -53,16 +54,32 @@ def main() -> None:
 
     manifest = load_manifest(path)
 
-    for entry in manifest:
-        if entry.get("guid") == plugin["guid"]:
-            entry.update(plugin)
-            existing = [
-                v
-                for v in entry.get("versions", [])
-                if v.get("version") != version_entry["version"]
-            ]
-            entry["versions"] = [version_entry] + existing
-            break
+    matching_entries = [
+        entry
+        for entry in manifest
+        if entry.get("guid") == plugin["guid"] or entry.get("name") == plugin["name"]
+    ]
+
+    if matching_entries:
+        entry = matching_entries[0]
+        existing_versions = []
+        seen_versions = {version_entry["version"]}
+        for candidate in matching_entries:
+            for version in candidate.get("versions", []):
+                version_name = version.get("version")
+                if not version_name or version_name in seen_versions:
+                    continue
+
+                seen_versions.add(version_name)
+                existing_versions.append(version)
+
+        entry.update(plugin)
+        entry["versions"] = [version_entry] + existing_versions
+        manifest = [
+            candidate
+            for candidate in manifest
+            if candidate is entry or candidate not in matching_entries
+        ]
     else:
         plugin["versions"] = [version_entry]
         manifest.append(plugin)

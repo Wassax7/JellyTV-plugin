@@ -205,11 +205,10 @@ public sealed class JellyTVEpisodeBatcher
                     }
                     else if (!string.IsNullOrWhiteSpace(name))
                     {
-                        // Fallback: only series name available, use episode batch format with count=1
-                        friendlyBody = Localizer.Format("EpisodesNewForSeries", new Dictionary<string, string>
+                        // Fallback: only series name available.
+                        friendlyBody = Localizer.Format("EpisodeNewForSeries", new Dictionary<string, string>
                         {
-                            ["Series"] = name,
-                            ["Count"] = "1"
+                            ["Series"] = name
                         });
                     }
                     else

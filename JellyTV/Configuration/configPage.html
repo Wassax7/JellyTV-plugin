@@ -65,19 +65,19 @@
                 <!-- App Tab -->
                 <div id="tab-app" class="jellytv-tab-content active">
                     <div class="jellytv-card">
-                        <div class="jellytv-card-title">Jellyseerr Auto-Connect</div>
+                        <div class="jellytv-card-title">Seerr Auto-Connect</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">
-                            Base URL to your Jellyseerr instance. If configured, the JellyTV app will auto-configure
-                            Jellyseerr access.
+                            Base URL to your Seerr instance. If configured, the JellyTV app will auto-configure
+                            Seerr access.
                         </div>
                         <div class="inputContainer">
-                            <label class="inputLabel" for="JellyseerrBaseUrl">Base URL</label>
-                            <input id="JellyseerrBaseUrl" type="text" is="emby-input"
-                                placeholder="https://jellyseerr.example.com" />
+                            <label class="inputLabel" for="SeerrBaseUrl">Base URL</label>
+                            <input id="SeerrBaseUrl" type="text" is="emby-input"
+                                placeholder="https://seerr.example.com" />
                         </div>
-                        <div id="JellyseerrStatus" class="jellytv-status" style="display: none;"></div>
+                        <div id="SeerrStatus" class="jellytv-status" style="display: none;"></div>
                         <div style="margin-top: 15px;">
-                            <button is="emby-button" type="button" id="SaveJellyseerrBtn" class="raised emby-button">
+                            <button is="emby-button" type="button" id="SaveSeerrBtn" class="raised emby-button">
                                 <span>Save</span>
                             </button>
                         </div>
@@ -145,35 +145,44 @@
                                 </label>
                                 <div class="fieldDescription">Notify users when playback ends.</div>
                             </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="SendRegistrationConfirmation" type="checkbox" is="emby-checkbox" />
-                                    <span>Send welcome notification on device registration</span>
-                                </label>
-                                <div class="fieldDescription">Users receive a confirmation notification when they
-                                    register a new device.</div>
-                            </div>
                         </div>
 
                         <div class="jellytv-card">
                             <div class="jellytv-card-title">Language</div>
-                            <div class="fieldDescription" style="margin-bottom: 15px;">Select the language for push
-                                notifications.</div>
+                            <div class="fieldDescription" style="margin-bottom: 15px;">By default, push notifications use the Jellyfin server language.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="OverrideServerLanguage" type="checkbox" is="emby-checkbox" />
+                                    <span>Override Jellyfin default language</span>
+                                </label>
+                                <div class="fieldDescription">Enable this to use a separate notification language for JellyTV.</div>
+                            </div>
                             <div class="selectContainer">
                                 <label class="inputLabel" for="PreferredLanguage">Notification Language</label>
                                 <select id="PreferredLanguage" is="emby-select">
-                                    <option value="ar">العربية</option>
-                                    <option value="de">Deutsch</option>
                                     <option value="en">English (default)</option>
-                                    <option value="es">Español</option>
-                                    <option value="fr">Français</option>
-                                    <option value="hi">हिन्दी</option>
-                                    <option value="it">Italiano</option>
+                                    <option value="ar">العربية</option>
+                                    <option value="zh">中文（简体）</option>
+                                    <option value="hr">Hrvatski</option>
+                                    <option value="cs">Čeština</option>
+                                    <option value="da">Dansk</option>
                                     <option value="nl">Nederlands</option>
+                                    <option value="fr">Français</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="he">עברית</option>
+                                    <option value="hi">हिन्दी</option>
+                                    <option value="hu">Magyar</option>
+                                    <option value="it">Italiano</option>
+                                    <option value="nb">Norsk bokmål</option>
                                     <option value="pl">Polski</option>
-                                    <option value="pt">Português</option>
+                                    <option value="pt-pt">Português (Portugal)</option>
+                                    <option value="ru">Русский</option>
+                                    <option value="sl">Slovenščina</option>
+                                    <option value="es">Español</option>
+                                    <option value="es-419">Español (Latinoamérica)</option>
                                     <option value="sv">Svenska</option>
-                                    <option value="zh">中文</option>
+                                    <option value="tr">Türkçe</option>
+                                    <option value="uk">Українська</option>
                                 </select>
                             </div>
                         </div>

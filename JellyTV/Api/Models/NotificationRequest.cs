@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace Jellyfin.Plugin.JellyTV.Api.Models;
 
 /// <summary>
@@ -16,7 +19,8 @@ public sealed class NotificationRequest
     public string? Body { get; set; }
 
     /// <summary>
-    /// Gets or sets the target username or user id (N format). If empty, sends to all registered users.
+    /// Gets or sets the target username payload. Accepts a string, an array of strings, null, or omission.
     /// </summary>
-    public string? Username { get; set; }
+    [JsonPropertyName("username")]
+    public JsonElement Username { get; set; }
 }

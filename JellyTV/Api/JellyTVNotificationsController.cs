@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Jellyfin.Data;
 using Jellyfin.Database.Implementations.Enums;
@@ -112,7 +113,11 @@ public sealed class JellyTVNotificationsController : ControllerBase
         {
             var title = (req.Title ?? string.Empty).Trim();
             var body = (req.Body ?? string.Empty).Trim();
-            var username = (req.Username ?? string.Empty).Trim();
+            var usernames = ReadUsernames(req.Username)
+                .Select(static u => u.Trim())
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             if (title.Length > MaxTitleLength)
             {
@@ -125,25 +130,36 @@ public sealed class JellyTVNotificationsController : ControllerBase
             }
 
             IEnumerable<string> targets;
-            if (string.IsNullOrWhiteSpace(username))
+            if (usernames.Length == 0)
             {
                 targets = JellyTVUserStore.Load().Select(u => u.UserId);
             }
             else
             {
-                var user = _userManager.GetUserByName(username);
-                if (user == null && Guid.TryParse(username, out var userId))
+                var targetIds = new List<string>();
+                foreach (var username in usernames)
                 {
-                    user = _userManager.GetUserById(userId);
+                    var user = _userManager.GetUserByName(username);
+                    if (user == null && Guid.TryParse(username, out var userId))
+                    {
+                        user = _userManager.GetUserById(userId);
+                    }
+
+                    if (user == null)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    targetIds.Add(user.Id.ToString("N"));
                 }
 
-                if (user == null)
+                if (targetIds.Count == 0)
                 {
-                    skipped++;
                     continue;
                 }
 
-                targets = new[] { user.Id.ToString("N") };
+                targets = targetIds;
             }
 
             await _pushService.SendCustomAsync(title, body, targets).ConfigureAwait(false);
@@ -151,5 +167,42 @@ public sealed class JellyTVNotificationsController : ControllerBase
         }
 
         return Ok(new { status = "ok", processed = sent, skipped });
+    }
+
+    private static List<string> ReadUsernames(JsonElement username)
+    {
+        var values = new List<string>();
+        switch (username.ValueKind)
+        {
+            case JsonValueKind.Undefined:
+            case JsonValueKind.Null:
+                return values;
+            case JsonValueKind.String:
+                var value = username.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    values.Add(value);
+                }
+
+                return values;
+            case JsonValueKind.Array:
+                foreach (var item in username.EnumerateArray())
+                {
+                    if (item.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    value = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        values.Add(value);
+                    }
+                }
+
+                return values;
+            default:
+                return values;
+        }
     }
 }

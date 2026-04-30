@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.JellyTV.Localization;
+using MediaBrowser.Controller.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.JellyTV.Services;
@@ -23,9 +24,13 @@ public sealed class JellyTVPushService
     /// Initializes a new instance of the <see cref="JellyTVPushService"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    public JellyTVPushService(ILogger<JellyTVPushService> logger)
+    /// <param name="serverConfigurationManager">The Jellyfin server configuration manager.</param>
+    public JellyTVPushService(
+        ILogger<JellyTVPushService> logger,
+        IServerConfigurationManager serverConfigurationManager)
     {
         _logger = logger;
+        Localizer.SetServerConfigurationManager(serverConfigurationManager);
     }
 
     private static bool IsValidApnsToken(string token)
@@ -117,26 +122,6 @@ public sealed class JellyTVPushService
 
         _logger.LogInformation("Pushing custom notification to {DeviceCount} device(s). title={Title}", deviceTokens.Count, title ?? string.Empty);
         await PostToRelayManyAsync(deviceTokens, title ?? "JellyTV", body ?? string.Empty).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Sends a one-time confirmation push after registering a new device token.
-    /// </summary>
-    /// <param name="userId">The Jellyfin user ID.</param>
-    /// <param name="token">The raw device token.</param>
-    /// <returns>A task representing the async operation.</returns>
-    public Task SendRegistrationConfirmationAsync(string userId, string token)
-    {
-        const string title = "JellyTV";
-        var body = Localizer.T("RegistrationBody");
-        var cleaned = CleanApnsToken(token);
-        if (!IsValidApnsToken(cleaned))
-        {
-            return Task.CompletedTask;
-        }
-
-        _logger.LogInformation("Sending registration confirmation to user {UserId}", userId);
-        return PostToRelaySingleAsync(cleaned, title, body);
     }
 
     private async Task PostToRelaySingleAsync(string deviceToken, string title, string body)

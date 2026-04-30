@@ -14,6 +14,7 @@ namespace Jellyfin.Plugin.JellyTV.Services;
 internal static class JellyTVUserStore
 {
     private const string FileName = "registered-users.json";
+    private static readonly object StoreGate = new object();
     private static Dictionary<string, JellyTVUserPreferences>? _preferencesCache;
     private static JellyTVTokenEncryption? _tokenEncryption;
 
@@ -79,6 +80,14 @@ internal static class JellyTVUserStore
 
     public static List<JellyTVUserTokens> Load()
     {
+        lock (StoreGate)
+        {
+            return LoadCore();
+        }
+    }
+
+    private static List<JellyTVUserTokens> LoadCore()
+    {
         try
         {
             var path = GetStorePath();
@@ -105,7 +114,7 @@ internal static class JellyTVUserStore
                         }
                     }
 
-                    Save(migrated);
+                    SaveCore(migrated);
                     try
                     {
                         // Clear legacy config to stop future writes/reads there
@@ -161,7 +170,7 @@ internal static class JellyTVUserStore
         }
     }
 
-    private static void Save(List<JellyTVUserTokens> users)
+    private static void SaveCore(List<JellyTVUserTokens> users)
     {
         try
         {
@@ -215,38 +224,34 @@ internal static class JellyTVUserStore
 
     public static (JellyTVUserTokens User, bool IsNewToken) UpsertToken(string userId, string token)
     {
-        var normalizedId = NormalizeUserId(userId);
-        if (string.IsNullOrWhiteSpace(normalizedId))
+        lock (StoreGate)
         {
-            throw new ArgumentException("userId must be a valid Jellyfin user identifier.", nameof(userId));
+            var normalizedId = NormalizeUserId(userId);
+            if (string.IsNullOrWhiteSpace(normalizedId))
+            {
+                throw new ArgumentException("userId must be a valid Jellyfin user identifier.", nameof(userId));
+            }
+
+            var users = LoadCore();
+            var user = users.FirstOrDefault(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase));
+            if (user == null)
+            {
+                user = new JellyTVUserTokens { UserId = normalizedId };
+                users.Add(user);
+            }
+
+            // Replace-on-register: keep only the latest token for this user.
+            var tokenAlreadyPresent = user.Tokens.Any(t => string.Equals(t, token, StringComparison.OrdinalIgnoreCase));
+            var isSameSingleToken = user.Tokens.Count == 1 && tokenAlreadyPresent;
+            if (!isSameSingleToken)
+            {
+                user.Tokens.Clear();
+                user.Tokens.Add(token);
+            }
+
+            SaveCore(users);
+            return (user, !tokenAlreadyPresent);
         }
-
-        var users = Load();
-        var user = users.FirstOrDefault(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase));
-        if (user == null)
-        {
-            user = new JellyTVUserTokens { UserId = normalizedId };
-            users.Add(user);
-        }
-
-        // Replace-on-register: keep only the latest token for this user.
-        // If the same token is already the only one, treat as not new and do nothing.
-        var exists = user.Tokens.Any(t => string.Equals(t, token, StringComparison.OrdinalIgnoreCase));
-        var isNew = false;
-        if (user.Tokens.Count == 1 && exists)
-        {
-            // No change needed; exact same single token present.
-            Save(users);
-            return (user, false);
-        }
-
-        // Otherwise, replace the set with only this token.
-        user.Tokens.Clear();
-        user.Tokens.Add(token);
-        isNew = !exists; // only consider it "new" if it wasn't already present
-
-        Save(users);
-        return (user, isNew);
     }
 
     // In-memory preferences cache to avoid changing JellyTVUserTokens data shape.
@@ -289,54 +294,60 @@ internal static class JellyTVUserStore
 
     public static void SetPreferences(string userId, JellyTVUserPreferences prefs)
     {
-        EnsurePrefsLoaded();
-        var normalizedId = NormalizeUserId(userId);
-        if (string.IsNullOrWhiteSpace(normalizedId))
+        lock (StoreGate)
         {
-            return;
+            EnsurePrefsLoaded();
+            var normalizedId = NormalizeUserId(userId);
+            if (string.IsNullOrWhiteSpace(normalizedId))
+            {
+                return;
+            }
+
+            var normalizedPrefs = new JellyTVUserPreferences
+            {
+                ForwardItemAdded = prefs.ForwardItemAdded,
+                ForwardPlaybackStart = prefs.ForwardPlaybackStart,
+                ForwardPlaybackStop = prefs.ForwardPlaybackStop
+            };
+
+            var hasPreferences = normalizedPrefs.ForwardItemAdded.HasValue
+                || normalizedPrefs.ForwardPlaybackStart.HasValue
+                || normalizedPrefs.ForwardPlaybackStop.HasValue;
+
+            if (hasPreferences)
+            {
+                _preferencesCache![normalizedId] = normalizedPrefs;
+            }
+            else
+            {
+                _preferencesCache!.Remove(normalizedId);
+            }
+
+            // Persist by re-saving the user store (tokens + prefs)
+            var users = LoadCore();
+            // Make sure the user exists even if no token yet
+            if (hasPreferences && !users.Any(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase)))
+            {
+                users.Add(new JellyTVUserTokens { UserId = normalizedId });
+            }
+
+            SaveCore(users);
         }
-
-        var normalizedPrefs = new JellyTVUserPreferences
-        {
-            ForwardItemAdded = prefs.ForwardItemAdded,
-            ForwardPlaybackStart = prefs.ForwardPlaybackStart,
-            ForwardPlaybackStop = prefs.ForwardPlaybackStop
-        };
-
-        var hasPreferences = normalizedPrefs.ForwardItemAdded.HasValue
-            || normalizedPrefs.ForwardPlaybackStart.HasValue
-            || normalizedPrefs.ForwardPlaybackStop.HasValue;
-
-        if (hasPreferences)
-        {
-            _preferencesCache![normalizedId] = normalizedPrefs;
-        }
-        else
-        {
-            _preferencesCache!.Remove(normalizedId);
-        }
-
-        // Persist by re-saving the user store (tokens + prefs)
-        var users = Load();
-        // Make sure the user exists even if no token yet
-        if (hasPreferences && !users.Any(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase)))
-        {
-            users.Add(new JellyTVUserTokens { UserId = normalizedId });
-        }
-
-        Save(users);
     }
 
     public static JellyTVUserPreferences? GetPreferences(string userId)
     {
-        EnsurePrefsLoaded();
-        var normalizedId = NormalizeUserId(userId);
-        if (string.IsNullOrWhiteSpace(normalizedId))
+        lock (StoreGate)
         {
-            return null;
-        }
+            EnsurePrefsLoaded();
+            var normalizedId = NormalizeUserId(userId);
+            if (string.IsNullOrWhiteSpace(normalizedId))
+            {
+                return null;
+            }
 
-        return _preferencesCache!.TryGetValue(normalizedId, out var p) ? p : null;
+            return _preferencesCache!.TryGetValue(normalizedId, out var p) ? p : null;
+        }
     }
 
     public static bool IsEventAllowedForUser(string userId, string eventName)
@@ -381,30 +392,33 @@ internal static class JellyTVUserStore
 
     public static int RemoveToken(string token)
     {
-        var users = Load();
-        var removed = 0;
-        foreach (var u in users)
+        lock (StoreGate)
         {
-            var before = u.Tokens.Count;
-            var remaining = u.Tokens.Where(t => !string.Equals(t, token, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (remaining.Count != u.Tokens.Count)
+            var users = LoadCore();
+            var removed = 0;
+            foreach (var u in users)
             {
-                u.Tokens.Clear();
-                foreach (var t in remaining)
+                var before = u.Tokens.Count;
+                var remaining = u.Tokens.Where(t => !string.Equals(t, token, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (remaining.Count != u.Tokens.Count)
                 {
-                    u.Tokens.Add(t);
+                    u.Tokens.Clear();
+                    foreach (var t in remaining)
+                    {
+                        u.Tokens.Add(t);
+                    }
                 }
+
+                removed += before - remaining.Count;
             }
 
-            removed += before - remaining.Count;
-        }
+            if (removed > 0)
+            {
+                SaveCore(users);
+            }
 
-        if (removed > 0)
-        {
-            Save(users);
+            return removed;
         }
-
-        return removed;
     }
 
     /// <summary>
@@ -416,26 +430,29 @@ internal static class JellyTVUserStore
     {
         try
         {
-            var normalizedId = NormalizeUserId(userId);
-            if (string.IsNullOrWhiteSpace(normalizedId))
+            lock (StoreGate)
             {
-                return false;
+                var normalizedId = NormalizeUserId(userId);
+                if (string.IsNullOrWhiteSpace(normalizedId))
+                {
+                    return false;
+                }
+
+                var users = LoadCore();
+                var initialCount = users.Count;
+                users.RemoveAll(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase));
+
+                if (users.Count == initialCount)
+                {
+                    return false;
+                }
+
+                // Also remove from preferences cache
+                _preferencesCache?.Remove(normalizedId);
+
+                SaveCore(users);
+                return true;
             }
-
-            var users = Load();
-            var initialCount = users.Count;
-            users.RemoveAll(u => string.Equals(u.UserId, normalizedId, StringComparison.OrdinalIgnoreCase));
-
-            if (users.Count == initialCount)
-            {
-                return false;
-            }
-
-            // Also remove from preferences cache
-            _preferencesCache?.Remove(normalizedId);
-
-            Save(users);
-            return true;
         }
         catch
         {

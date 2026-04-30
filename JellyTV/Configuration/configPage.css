@@ -58,6 +58,19 @@
     margin-bottom: 20px;
 }
 
+@media all and (min-width: 900px) {
+    #tab-app.jellytv-tab-content.active {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    #tab-app .jellytv-card {
+        margin-bottom: 0;
+    }
+}
+
 .jellytv-card-title {
     font-size: 16px;
     font-weight: 500;

@@ -6,9 +6,11 @@ using Jellyfin.Database.Implementations.Enums;
 using Jellyfin.Plugin.JellyTV.Api.Models;
 using Jellyfin.Plugin.JellyTV.Configuration;
 using Jellyfin.Plugin.JellyTV.Services;
+using MediaBrowser.Controller.Authentication;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.JellyTV.Api;
 
@@ -25,6 +27,7 @@ public class JellyTVController : ControllerBase
     private readonly IAuthorizationContext _authorizationContext;
     private readonly IUserManager _userManager;
     private readonly RateLimitService _rateLimitService;
+    private readonly ILogger<JellyTVController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTVController"/> class.
@@ -33,16 +36,19 @@ public class JellyTVController : ControllerBase
     /// <param name="authorizationContext">The authorization context.</param>
     /// <param name="userManager">The user manager.</param>
     /// <param name="rateLimitService">The rate limit service.</param>
+    /// <param name="logger">The logger.</param>
     public JellyTVController(
         JellyTVPushService pushService,
         IAuthorizationContext authorizationContext,
         IUserManager userManager,
-        RateLimitService rateLimitService)
+        RateLimitService rateLimitService,
+        ILogger<JellyTVController> logger)
     {
         _pushService = pushService;
         _authorizationContext = authorizationContext;
         _userManager = userManager;
         _rateLimitService = rateLimitService;
+        _logger = logger;
     }
 
     private static string CleanApnsToken(string token)
@@ -75,7 +81,7 @@ public class JellyTVController : ControllerBase
     /// <param name="userId">The Jellyfin user id.</param>
     /// <returns>HTTP 200 with the preferences JSON including admin settings.</returns>
     [HttpGet("preferences/{userId}")]
-    public ActionResult GetPreferences([FromRoute] string pluginGuid, [FromRoute] string userId)
+    public async Task<ActionResult> GetPreferences([FromRoute] string pluginGuid, [FromRoute] string userId)
     {
         if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
         {
@@ -85,6 +91,17 @@ public class JellyTVController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId))
         {
             return BadRequest("userId is required");
+        }
+
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        if (!CanAccessUser(auth, NormalizeUserId(userId)))
+        {
+            return Forbid("Cannot read another user's preferences");
         }
 
         var config = Plugin.Instance?.Configuration;
@@ -123,13 +140,16 @@ public class JellyTVController : ControllerBase
             return BadRequest("userId is required");
         }
 
-        var auth = await _authorizationContext.GetAuthorizationInfo(Request.HttpContext).ConfigureAwait(false);
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
         var requestedUserId = NormalizeUserId(request.UserId);
         var callerUserId = NormalizeUserId(auth.UserId.ToString());
 
-        var callerUser = auth.UserId != Guid.Empty ? _userManager.GetUserById(auth.UserId) : null;
-        var isAdmin = callerUser?.HasPermission(PermissionKind.IsAdministrator) ?? false;
-        if (!string.Equals(requestedUserId, callerUserId, StringComparison.OrdinalIgnoreCase) && !isAdmin)
+        if (!CanAccessUser(auth, requestedUserId))
         {
             return Forbid("Cannot modify another user's preferences");
         }
@@ -179,6 +199,17 @@ public class JellyTVController : ControllerBase
         }
 
         var normalizedUserId = NormalizeUserId(request.UserId);
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        if (!CanAccessUser(auth, normalizedUserId))
+        {
+            return Forbid("Cannot register a token for another user");
+        }
+
         var rateLimitKey = $"register:{normalizedUserId}";
         if (!_rateLimitService.TryAcquire(rateLimitKey, 5, RateLimitWindow))
         {
@@ -188,11 +219,6 @@ public class JellyTVController : ControllerBase
         }
 
         var result = JellyTVUserStore.UpsertToken(request.UserId, cleanedToken);
-
-        if (result.IsNewToken && Plugin.Instance?.Configuration?.SendRegistrationConfirmation == true)
-        {
-            await _pushService.SendRegistrationConfirmationAsync(request.UserId, cleanedToken).ConfigureAwait(false);
-        }
 
         return Ok(new { status = "ok", userId = request.UserId, tokens = result.User.Tokens.ToArray() });
     }
@@ -236,11 +262,22 @@ public class JellyTVController : ControllerBase
     /// <param name="pluginGuid">The plugin guid from the route.</param>
     /// <returns>HTTP 200 with the list of user IDs.</returns>
     [HttpGet("users")]
-    public ActionResult GetUsers([FromRoute] string pluginGuid)
+    public async Task<ActionResult> GetUsers([FromRoute] string pluginGuid)
     {
         if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
         {
             return NotFound();
+        }
+
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        if (!IsAdminOrApiKey(auth))
+        {
+            return Forbid("Admin access required");
         }
 
         var users = JellyTVUserStore.Load();
@@ -255,13 +292,24 @@ public class JellyTVController : ControllerBase
     /// <param name="request">The delete user request containing userId.</param>
     /// <returns>HTTP 200 on success, 404 if user not found.</returns>
     [HttpPost("users/delete")]
-    public ActionResult DeleteUser([FromRoute] string pluginGuid, [FromBody] Models.DeleteUserRequest request)
+    public async Task<ActionResult> DeleteUser([FromRoute] string pluginGuid, [FromBody] Models.DeleteUserRequest request)
     {
         try
         {
             if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
             {
                 return NotFound();
+            }
+
+            var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+            if (auth == null)
+            {
+                return Unauthorized("Authentication required");
+            }
+
+            if (!IsAdminOrApiKey(auth))
+            {
+                return Forbid("Admin access required");
             }
 
             var userId = request?.UserId;
@@ -280,24 +328,25 @@ public class JellyTVController : ControllerBase
         }
         catch (System.Exception ex)
         {
-            return StatusCode(500, new { error = "Internal error: " + ex.Message });
+            _logger.LogError(ex, "Failed to delete JellyTV user registration");
+            return StatusCode(500, new { error = "Internal error" });
         }
     }
 
     /// <summary>
-    /// Returns the configured Jellyseerr base URL.
+    /// Returns the configured Seerr base URL.
     /// </summary>
     /// <param name="pluginGuid">The plugin guid from the route.</param>
     /// <returns>HTTP 200 with { baseUrl }.</returns>
-    [HttpGet("jellyseerr")]
-    public ActionResult GetJellyseerrBaseUrl([FromRoute] string pluginGuid)
+    [HttpGet("seerr")]
+    public ActionResult GetSeerrBaseUrl([FromRoute] string pluginGuid)
     {
         if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
         {
             return NotFound();
         }
 
-        var raw = Plugin.Instance?.Configuration?.JellyseerrBaseUrl ?? string.Empty;
+        var raw = Plugin.Instance?.Configuration?.SeerrBaseUrl ?? string.Empty;
         var baseUrl = (raw ?? string.Empty).Trim();
         return Ok(new { baseUrl });
     }
@@ -319,6 +368,17 @@ public class JellyTVController : ControllerBase
                 return NotFound();
             }
 
+            var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+            if (auth == null)
+            {
+                return Unauthorized("Authentication required");
+            }
+
+            if (!IsAdminOrApiKey(auth))
+            {
+                return Forbid("Admin access required");
+            }
+
             var message = request?.Message?.Trim();
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -338,7 +398,52 @@ public class JellyTVController : ControllerBase
         }
         catch (System.Exception ex)
         {
-            return StatusCode(500, new { error = "Internal error: " + ex.Message });
+            _logger.LogError(ex, "Failed to send JellyTV broadcast notification");
+            return StatusCode(500, new { error = "Internal error" });
         }
+    }
+
+    private async Task<AuthorizationInfo?> GetAuthenticatedAuthorizationAsync()
+    {
+        try
+        {
+            var auth = await _authorizationContext.GetAuthorizationInfo(Request.HttpContext).ConfigureAwait(false);
+            if (auth == null || !auth.HasToken || !auth.IsAuthenticated)
+            {
+                return null;
+            }
+
+            return auth;
+        }
+        catch (AuthenticationException)
+        {
+            return null;
+        }
+    }
+
+    private bool CanAccessUser(AuthorizationInfo auth, string userId)
+    {
+        if (IsAdminOrApiKey(auth))
+        {
+            return true;
+        }
+
+        if (auth.UserId == Guid.Empty || string.IsNullOrWhiteSpace(userId))
+        {
+            return false;
+        }
+
+        return string.Equals(NormalizeUserId(auth.UserId.ToString()), userId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsAdminOrApiKey(AuthorizationInfo auth)
+    {
+        if (auth.UserId == Guid.Empty && auth.HasToken && auth.IsAuthenticated)
+        {
+            return true;
+        }
+
+        var user = auth.UserId != Guid.Empty ? _userManager.GetUserById(auth.UserId) : null;
+        return user?.HasPermission(PermissionKind.IsAdministrator) ?? false;
     }
 }

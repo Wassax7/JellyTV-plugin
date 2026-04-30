@@ -1,4 +1,4 @@
-const PLUGIN_ID = '9da8e914-0355-49a1-9851-f94b6f468d59';
+const PLUGIN_ID = 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1';
 
 // DOM helpers
 const $ = sel => document.querySelector(sel);
@@ -21,6 +21,10 @@ const normalizeId = id => id ? id.toString().toLowerCase().replace(/[^a-f0-9]/g,
 const getInitials = name => (name || '?').charAt(0).toUpperCase();
 const getPrefClass = v => v === true ? 'pref-on' : v === false ? 'pref-off' : 'pref-default';
 const getPrefLabel = v => v === true ? 'On' : v === false ? 'Off' : 'Default';
+const updateLanguageOverrideState = () => {
+    const override = $('#OverrideServerLanguage').checked;
+    $('#PreferredLanguage').disabled = !override;
+};
 
 const showStatus = (sel, type, msg) => {
     const el = $(sel);
@@ -85,8 +89,10 @@ const loadConfiguration = async () => {
     Dashboard.showLoadingMsg();
     try {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
-        $('#JellyseerrBaseUrl').value = config.JellyseerrBaseUrl || '';
+        $('#SeerrBaseUrl').value = config.SeerrBaseUrl || '';
+        $('#OverrideServerLanguage').checked = config.OverrideServerLanguage === true;
         $('#PreferredLanguage').value = config.PreferredLanguage || 'en';
+        updateLanguageOverrideState();
         $('#ForwardItemAdded').checked = config.ForwardItemAdded === true;
 
         let playbackStart = config.ForwardPlaybackStart === true;
@@ -97,7 +103,6 @@ const loadConfiguration = async () => {
         }
         $('#ForwardPlaybackStart').checked = playbackStart;
         $('#ForwardPlaybackStop').checked = playbackStop;
-        $('#SendRegistrationConfirmation').checked = config.SendRegistrationConfirmation !== false;
 
         await renderRegisteredUsers();
     } catch { /* ignore */ }
@@ -201,12 +206,12 @@ $('#TemplateConfigForm').addEventListener('submit', async e => {
     Dashboard.showLoadingMsg();
     try {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
-        config.JellyseerrBaseUrl = $('#JellyseerrBaseUrl').value.trim();
+        config.SeerrBaseUrl = $('#SeerrBaseUrl').value.trim();
+        config.OverrideServerLanguage = $('#OverrideServerLanguage').checked;
         config.PreferredLanguage = $('#PreferredLanguage').value || 'en';
         config.ForwardItemAdded = $('#ForwardItemAdded').checked;
         config.ForwardPlaybackStart = $('#ForwardPlaybackStart').checked;
         config.ForwardPlaybackStop = $('#ForwardPlaybackStop').checked;
-        config.SendRegistrationConfirmation = $('#SendRegistrationConfirmation').checked;
         const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
         Dashboard.processPluginConfigurationUpdateResult(result);
     } finally {
@@ -215,6 +220,8 @@ $('#TemplateConfigForm').addEventListener('submit', async e => {
 });
 
 // Broadcast notification
+$('#OverrideServerLanguage').addEventListener('change', updateLanguageOverrideState);
+
 $('#SendBroadcastBtn').addEventListener('click', async e => {
     e.preventDefault();
     const message = $('#BroadcastMessage').value.trim();
@@ -245,20 +252,20 @@ $('#SendBroadcastBtn').addEventListener('click', async e => {
     }
 });
 
-// Save Jellyseerr URL
-$('#SaveJellyseerrBtn').addEventListener('click', async e => {
+// Save Seerr URL
+$('#SaveSeerrBtn').addEventListener('click', async e => {
     e.preventDefault();
     Dashboard.showLoadingMsg();
-    hideStatus('#JellyseerrStatus');
+    hideStatus('#SeerrStatus');
 
     try {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
-        config.JellyseerrBaseUrl = $('#JellyseerrBaseUrl').value.trim();
+        config.SeerrBaseUrl = $('#SeerrBaseUrl').value.trim();
         const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
-        showStatus('#JellyseerrStatus', 'success', 'Jellyseerr URL saved successfully!');
+        showStatus('#SeerrStatus', 'success', 'Seerr URL saved successfully!');
         Dashboard.processPluginConfigurationUpdateResult(result);
     } catch (err) {
-        showStatus('#JellyseerrStatus', 'error', err.message || 'Failed to save.');
+        showStatus('#SeerrStatus', 'error', err.message || 'Failed to save.');
     } finally {
         Dashboard.hideLoadingMsg();
     }

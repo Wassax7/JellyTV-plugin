@@ -26,7 +26,7 @@ public enum SomeOptions
 /// </summary>
 public class PluginConfiguration : BasePluginConfiguration
 {
-    private string? _jellyseerrBaseUrl;
+    private string? _seerrBaseUrl;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginConfiguration"/> class.
@@ -37,8 +37,8 @@ public class PluginConfiguration : BasePluginConfiguration
         ForwardItemAdded = true;
         ForwardPlaybackStart = false;
         ForwardPlaybackStop = false;
-        SendRegistrationConfirmation = true;
-        JellyseerrBaseUrl = string.Empty;
+        SeerrBaseUrl = string.Empty;
+        OverrideServerLanguage = false;
         PreferredLanguage = "en";
         // Deprecated: RegisteredUsers moved to persistent store file.
         RegisteredUsers = new Collection<JellyTVUserTokens>();
@@ -60,29 +60,46 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ForwardPlaybackStop { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether to send confirmation notifications on device registration.
-    /// When enabled, users receive a welcome notification when they register a new device.
-    /// </summary>
-    public bool SendRegistrationConfirmation { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Jellyseerr base URL configured by the admin.
-    /// Example: https://jellyseerr.example.com.
+    /// Gets or sets the Seerr base URL configured by the admin.
+    /// Example: https://seerr.example.com.
     /// URL is validated on set; invalid URLs are rejected.
     /// </summary>
-    public string? JellyseerrBaseUrl
+    public string? SeerrBaseUrl
     {
-        get => _jellyseerrBaseUrl;
+        get => _seerrBaseUrl;
         set
         {
             var (isValid, normalized, _) = UrlValidator.ValidateUrl(value);
-            _jellyseerrBaseUrl = isValid ? normalized : null;
+            _seerrBaseUrl = isValid ? normalized : null;
         }
     }
 
     /// <summary>
+    /// Gets or sets the previous serialized Seerr base URL field for upgrade compatibility.
+    /// </summary>
+    [System.Xml.Serialization.XmlElement("Jelly" + "seerrBaseUrl")]
+    [System.Text.Json.Serialization.JsonPropertyName("Jelly" + "seerrBaseUrl")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacySeerrBaseUrl
+    {
+        get => null;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(_seerrBaseUrl) && !string.IsNullOrWhiteSpace(value))
+            {
+                SeerrBaseUrl = value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether push notifications should use the plugin language instead of the Jellyfin server UI language.
+    /// </summary>
+    public bool OverrideServerLanguage { get; set; }
+
+    /// <summary>
     /// Gets or sets the preferred language for push notifications.
-    /// Supported values: "en", "fr", "de", "es", "it".
+    /// Supported values include "en", "ar", "zh", "hr", "cs", "da", "nl", "fr", "de", "he", "hi", "hu", "it", "nb", "pl", "pt-pt", "ru", "sl", "es", "es-419", "sv", "tr", and "uk".
     /// Defaults to "en" if not set or invalid.
     /// </summary>
     public string PreferredLanguage { get; set; }
@@ -96,4 +113,10 @@ public class PluginConfiguration : BasePluginConfiguration
     [System.Runtime.Serialization.IgnoreDataMember]
     [System.Text.Json.Serialization.JsonIgnore]
     public Collection<JellyTVUserTokens> RegisteredUsers { get; }
+
+    /// <summary>
+    /// Prevents writing the previous serialized Seerr base URL field after migration.
+    /// </summary>
+    /// <returns>Always false.</returns>
+    public bool ShouldSerializeLegacySeerrBaseUrl() => false;
 }

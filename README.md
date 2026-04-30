@@ -12,11 +12,11 @@ Allows your Jellyfin server to communicate with [JellyTV app](https://jellytv.ap
 dotnet publish --configuration Release
 ```
 
-3. Place the resulting .dll file from `bin/Release/net8.0/publish` into its own folder inside the Jellyfin plugin directory.
+3. Place the resulting .dll file from `bin/Release/net9.0/publish` into its own folder inside the Jellyfin plugin directory.
 
 ## Configure Webhooks
 
-The JellyTV plugin ships with a built-in webhook route that you can use in other programs such as Jellyseerr to trigger push notifications alongside the standard Jellyfin events.
+The JellyTV plugin ships with a built-in webhook route that you can use in other programs such as Seerr to trigger push notifications alongside the standard Jellyfin events.
 
 ### 1. Add the route
 
@@ -63,7 +63,7 @@ X-Emby-Token: {jellyfinToken}
 
 ### Example
 
-For Jellyseerr :
+For Seerr:
 
 ```json
 [
