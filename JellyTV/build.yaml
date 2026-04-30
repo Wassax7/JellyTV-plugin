@@ -1,7 +1,7 @@
 ---
 name: "JellyTV"
 guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
-version: "0.5.0.0"
+version: "0.5.0.1"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Push notifications for the JellyTV iOS app"
@@ -12,4 +12,7 @@ owner: "Wassax7"
 artifacts:
   - "Jellyfin.Plugin.JellyTV.dll"
 changelog: >
-  changelog
+  Restores compatibility for older JellyTV app builds that still use the previous plugin GUID,
+  including registration, unregister, preferences, and Jellyseerr routes. Keeps current GUID
+  app endpoints authenticated, fixes authenticated admin-panel user removal, and defaults
+  ItemAdded notifications to enabled for new users.

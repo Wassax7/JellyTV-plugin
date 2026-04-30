@@ -8,7 +8,59 @@ const $$ = sel => document.querySelectorAll(sel);
 const buildApiUrl = path =>
     ApiClient.getApiUrl?.(path) ?? ApiClient.getUrl?.(path) ?? ApiClient._getApiUrl?.(path) ?? path;
 
-const getHeaders = () => ({ ...(ApiClient.getFetchHeaders?.() ?? {}), 'Content-Type': 'application/json' });
+const appendHeaders = (headers, source) => {
+    if (!source) return;
+    if (source instanceof Headers) {
+        source.forEach((value, key) => { headers[key] = value; });
+        return;
+    }
+    Object.assign(headers, source);
+};
+
+const readApiClientValue = value => {
+    try {
+        return typeof value === 'function' ? value.call(ApiClient) : value;
+    } catch {
+        return null;
+    }
+};
+
+const getAccessToken = () => {
+    const candidates = [
+        ApiClient.getAccessToken,
+        ApiClient.accessToken,
+        ApiClient._accessToken,
+        ApiClient.token,
+        ApiClient._token,
+        ApiClient.serverInfo,
+        ApiClient._serverInfo,
+        ApiClient.credentials,
+        ApiClient._credentials
+    ];
+
+    for (const candidate of candidates) {
+        const value = readApiClientValue(candidate);
+        if (!value) continue;
+        if (typeof value === 'string') return value;
+        if (typeof value.AccessToken === 'string') return value.AccessToken;
+        if (typeof value.accessToken === 'string') return value.accessToken;
+    }
+
+    return null;
+};
+
+const getHeaders = () => {
+    const headers = {};
+    appendHeaders(headers, readApiClientValue(ApiClient.getFetchHeaders));
+    const token = getAccessToken();
+    if (token) {
+        headers.Authorization ??= `MediaBrowser Token="${token}"`;
+        headers['X-Emby-Token'] ??= token;
+        headers['X-MediaBrowser-Token'] ??= token;
+    }
+    headers['Content-Type'] = 'application/json';
+    return headers;
+};
 
 const apiPost = (path, body) =>
     fetch(buildApiUrl(path), { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });

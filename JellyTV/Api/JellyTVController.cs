@@ -22,6 +22,7 @@ namespace Jellyfin.Plugin.JellyTV.Api;
 public class JellyTVController : ControllerBase
 {
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromSeconds(60);
+    private static readonly Guid LegacyPluginId = Guid.Parse("9da8e914-0355-49a1-9851-f94b6f468d59");
 
     private readonly JellyTVPushService _pushService;
     private readonly IAuthorizationContext _authorizationContext;
@@ -74,6 +75,15 @@ public class JellyTVController : ControllerBase
             : userId.Trim().ToLowerInvariant();
     }
 
+    private static bool TryParseRouteGuid(string pluginGuid, out Guid routeGuid)
+        => Guid.TryParse(pluginGuid, out routeGuid);
+
+    private static bool IsCurrentPluginRoute(Guid routeGuid)
+        => routeGuid == Plugin.Instance?.Id;
+
+    private static bool IsAppPluginRoute(Guid routeGuid)
+        => IsCurrentPluginRoute(routeGuid) || routeGuid == LegacyPluginId;
+
     /// <summary>
     /// Gets per-user delivery preferences for JellyTV events along with admin settings.
     /// </summary>
@@ -83,7 +93,7 @@ public class JellyTVController : ControllerBase
     [HttpGet("preferences/{userId}")]
     public async Task<ActionResult> GetPreferences([FromRoute] string pluginGuid, [FromRoute] string userId)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
@@ -94,12 +104,12 @@ public class JellyTVController : ControllerBase
         }
 
         var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
-        if (auth == null)
+        if (auth == null && IsCurrentPluginRoute(routeGuid))
         {
             return Unauthorized("Authentication required");
         }
 
-        if (!CanAccessUser(auth, NormalizeUserId(userId)))
+        if (auth != null && !CanAccessUser(auth, NormalizeUserId(userId)))
         {
             return Forbid("Cannot read another user's preferences");
         }
@@ -115,7 +125,7 @@ public class JellyTVController : ControllerBase
                 ForwardPlaybackStart = config?.ForwardPlaybackStart ?? false,
                 ForwardPlaybackStop = config?.ForwardPlaybackStop ?? false
             },
-            ForwardItemAdded = prefs?.ForwardItemAdded,
+            ForwardItemAdded = prefs?.ForwardItemAdded ?? (config?.ForwardItemAdded ?? true),
             ForwardPlaybackStart = prefs?.ForwardPlaybackStart,
             ForwardPlaybackStop = prefs?.ForwardPlaybackStop
         });
@@ -130,7 +140,7 @@ public class JellyTVController : ControllerBase
     [HttpPost("preferences")]
     public async Task<ActionResult> SetPreferences([FromRoute] string pluginGuid, [FromBody] PreferencesRequest request)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
@@ -182,7 +192,7 @@ public class JellyTVController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult> Register([FromRoute] string pluginGuid, [FromBody] RegisterRequest request)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
@@ -199,15 +209,18 @@ public class JellyTVController : ControllerBase
         }
 
         var normalizedUserId = NormalizeUserId(request.UserId);
-        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
-        if (auth == null)
+        if (IsCurrentPluginRoute(routeGuid))
         {
-            return Unauthorized("Authentication required");
-        }
+            var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+            if (auth == null)
+            {
+                return Unauthorized("Authentication required");
+            }
 
-        if (!CanAccessUser(auth, normalizedUserId))
-        {
-            return Forbid("Cannot register a token for another user");
+            if (!CanAccessUser(auth, normalizedUserId))
+            {
+                return Forbid("Cannot register a token for another user");
+            }
         }
 
         var rateLimitKey = $"register:{normalizedUserId}";
@@ -232,7 +245,7 @@ public class JellyTVController : ControllerBase
     [HttpPost("unregister")]
     public ActionResult Unregister([FromRoute] string pluginGuid, [FromBody] UnregisterRequest request)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
@@ -339,9 +352,10 @@ public class JellyTVController : ControllerBase
     /// <param name="pluginGuid">The plugin guid from the route.</param>
     /// <returns>HTTP 200 with { baseUrl }.</returns>
     [HttpGet("seerr")]
+    [HttpGet("jellyseerr")]
     public ActionResult GetSeerrBaseUrl([FromRoute] string pluginGuid)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
