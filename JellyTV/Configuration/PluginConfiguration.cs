@@ -37,6 +37,7 @@ public class PluginConfiguration : BasePluginConfiguration
         ForwardItemAdded = true;
         ForwardPlaybackStart = false;
         ForwardPlaybackStop = false;
+        ArrWebhookSecret = CreateWebhookSecret();
         SeerrBaseUrl = string.Empty;
         OverrideServerLanguage = false;
         PreferredLanguage = "en";
@@ -58,6 +59,11 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether to forward PlaybackStop events.
     /// </summary>
     public bool ForwardPlaybackStop { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URL token required for native *arr webhook requests.
+    /// </summary>
+    public string? ArrWebhookSecret { get; set; }
 
     /// <summary>
     /// Gets or sets the Seerr base URL configured by the admin.
@@ -119,4 +125,6 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     /// <returns>Always false.</returns>
     public bool ShouldSerializeLegacySeerrBaseUrl() => false;
+
+    private static string CreateWebhookSecret() => Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
 }

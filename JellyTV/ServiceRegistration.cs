@@ -21,6 +21,7 @@ public sealed class ServiceRegistration : IPluginServiceRegistrator
         serviceCollection.AddDataProtection().SetApplicationName("JellyTV");
         serviceCollection.AddSingleton<JellyTVTokenEncryption>();
         serviceCollection.AddSingleton<JellyTVPushService>();
+        serviceCollection.AddSingleton<ArrWebhookNotificationFormatter>();
         serviceCollection.AddSingleton<JellyTVEpisodeBatcher>();
         serviceCollection.AddSingleton<RateLimitService>();
         serviceCollection.AddHostedService<JellyTVEventListener>();

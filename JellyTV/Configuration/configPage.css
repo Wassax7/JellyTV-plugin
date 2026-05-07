@@ -69,6 +69,30 @@
     #tab-app .jellytv-card {
         margin-bottom: 0;
     }
+
+    #TemplateConfigForm {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+        width: 100%;
+        max-width: none;
+    }
+
+    #TemplateConfigForm .jellytv-card {
+        margin-bottom: 0;
+    }
+
+    #TemplateConfigForm > div:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+.jellytv-button-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
 }
 
 .jellytv-card-title {

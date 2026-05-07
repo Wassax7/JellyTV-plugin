@@ -148,6 +148,24 @@
                         </div>
 
                         <div class="jellytv-card">
+                            <div class="jellytv-card-title">Arr Webhooks</div>
+                            <div class="fieldDescription" style="margin-bottom: 15px;">
+                                Receive native webhook notifications from Radarr, Sonarr, Lidarr, and Readarr through the JellyTV notifications endpoint.
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="ArrWebhookUrl">Webhook URL</label>
+                                <input id="ArrWebhookUrl" type="text" is="emby-input" readonly />
+                            </div>
+                            <input id="ArrWebhookSecret" type="hidden" autocomplete="off" />
+                            <div id="ArrWebhookStatus" class="jellytv-status" style="display: none;"></div>
+                            <div class="jellytv-button-row">
+                                <button is="emby-button" type="button" id="GenerateArrWebhookSecretBtn" class="emby-button">
+                                    <span>Regenerate URL Token</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="jellytv-card">
                             <div class="jellytv-card-title">Language</div>
                             <div class="fieldDescription" style="margin-bottom: 15px;">By default, push notifications use the Jellyfin server language.</div>
                             <div class="checkboxContainer checkboxContainer-withDescription">

@@ -1,4 +1,4 @@
-const PLUGIN_ID = 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1';
+const PLUGIN_ID = '6e2f3159-1f9e-4972-b70c-8a076905f2b3';
 
 // DOM helpers
 const $ = sel => document.querySelector(sel);
@@ -78,6 +78,25 @@ const updateLanguageOverrideState = () => {
     $('#PreferredLanguage').disabled = !override;
 };
 
+const makeSecret = () => {
+    const bytes = new Uint8Array(24);
+    if (window.crypto?.getRandomValues) {
+        window.crypto.getRandomValues(bytes);
+    } else {
+        for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = Math.floor(Math.random() * 256);
+        }
+    }
+
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const updateArrWebhookUrl = () => {
+    const secret = $('#ArrWebhookSecret').value.trim();
+    const baseUrl = buildApiUrl('JellyTV/notifications');
+    $('#ArrWebhookUrl').value = secret ? `${baseUrl}?token=${encodeURIComponent(secret)}` : baseUrl;
+};
+
 const showStatus = (sel, type, msg) => {
     const el = $(sel);
     el.className = `jellytv-status ${type}`;
@@ -142,6 +161,8 @@ const loadConfiguration = async () => {
     try {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
         $('#SeerrBaseUrl').value = config.SeerrBaseUrl || '';
+        $('#ArrWebhookSecret').value = config.ArrWebhookSecret || makeSecret();
+        updateArrWebhookUrl();
         $('#OverrideServerLanguage').checked = config.OverrideServerLanguage === true;
         $('#PreferredLanguage').value = config.PreferredLanguage || 'en';
         updateLanguageOverrideState();
@@ -257,8 +278,16 @@ $('#TemplateConfigForm').addEventListener('submit', async e => {
     e.preventDefault();
     Dashboard.showLoadingMsg();
     try {
+        const arrWebhookSecret = $('#ArrWebhookSecret').value.trim();
+        hideStatus('#ArrWebhookStatus');
+        if (!arrWebhookSecret) {
+            showStatus('#ArrWebhookStatus', 'error', 'A URL token is required for Arr webhooks.');
+            return;
+        }
+
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
         config.SeerrBaseUrl = $('#SeerrBaseUrl').value.trim();
+        config.ArrWebhookSecret = arrWebhookSecret;
         config.OverrideServerLanguage = $('#OverrideServerLanguage').checked;
         config.PreferredLanguage = $('#PreferredLanguage').value || 'en';
         config.ForwardItemAdded = $('#ForwardItemAdded').checked;
@@ -321,6 +350,16 @@ $('#SaveSeerrBtn').addEventListener('click', async e => {
     } finally {
         Dashboard.hideLoadingMsg();
     }
+});
+
+// Save Arr webhook settings
+$('#ArrWebhookSecret').addEventListener('input', updateArrWebhookUrl);
+
+$('#GenerateArrWebhookSecretBtn').addEventListener('click', e => {
+    e.preventDefault();
+    $('#ArrWebhookSecret').value = makeSecret();
+    updateArrWebhookUrl();
+    showStatus('#ArrWebhookStatus', 'success', 'New URL token generated. Save to apply it.');
 });
 
 // Initialize

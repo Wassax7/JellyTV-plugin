@@ -22,7 +22,11 @@ namespace Jellyfin.Plugin.JellyTV.Api;
 public class JellyTVController : ControllerBase
 {
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromSeconds(60);
-    private static readonly Guid LegacyPluginId = Guid.Parse("9da8e914-0355-49a1-9851-f94b6f468d59");
+    private static readonly Guid[] LegacyPluginIds =
+    [
+        Guid.Parse("eb5d7894-8eef-4b36-aa6f-5d124e828ce1"),
+        Guid.Parse("9da8e914-0355-49a1-9851-f94b6f468d59")
+    ];
 
     private readonly JellyTVPushService _pushService;
     private readonly IAuthorizationContext _authorizationContext;
@@ -82,7 +86,7 @@ public class JellyTVController : ControllerBase
         => routeGuid == Plugin.Instance?.Id;
 
     private static bool IsAppPluginRoute(Guid routeGuid)
-        => IsCurrentPluginRoute(routeGuid) || routeGuid == LegacyPluginId;
+        => IsCurrentPluginRoute(routeGuid) || LegacyPluginIds.Contains(routeGuid);
 
     /// <summary>
     /// Gets per-user delivery preferences for JellyTV events along with admin settings.
@@ -277,7 +281,7 @@ public class JellyTVController : ControllerBase
     [HttpGet("users")]
     public async Task<ActionResult> GetUsers([FromRoute] string pluginGuid)
     {
-        if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
         {
             return NotFound();
         }
@@ -309,7 +313,7 @@ public class JellyTVController : ControllerBase
     {
         try
         {
-            if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+            if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
             {
                 return NotFound();
             }
@@ -377,7 +381,7 @@ public class JellyTVController : ControllerBase
     {
         try
         {
-            if (!Guid.TryParse(pluginGuid, out var routeGuid) || routeGuid != Plugin.Instance?.Id)
+            if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
             {
                 return NotFound();
             }

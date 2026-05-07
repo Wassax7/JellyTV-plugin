@@ -40,7 +40,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Name => "JellyTV";
 
     /// <inheritdoc />
-    public override Guid Id => Guid.Parse("eb5d7894-8eef-4b36-aa6f-5d124e828ce1");
+    public override Guid Id => Guid.Parse("6e2f3159-1f9e-4972-b70c-8a076905f2b3");
 
     /// <summary>
     /// Gets the current plugin instance.

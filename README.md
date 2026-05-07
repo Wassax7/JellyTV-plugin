@@ -76,6 +76,28 @@ For Seerr:
 
 ---
 
+## Configure Arr Webhooks
+
+JellyTV also accepts native webhook payloads from the Servarr stack, like Radarr and Sonarr.
+
+1. In Jellyfin, open Dashboard > Plugins > JellyTV > Settings.
+2. Generate a URL token if needed, and save.
+3. Copy the generated webhook URL.
+4. In each Arr app, go to Settings > Connect > Add > Webhook.
+5. Set the URL to the copied JellyTV URL, method to `POST`, and enable the event triggers you want.
+
+The native endpoint is:
+
+```
+{yourJellyfinUrl}/JellyTV/notifications?token={sharedSecret}
+```
+
+The secret can also be sent as `X-JellyTV-Webhook-Key: {sharedSecret}` or as a bearer token.
+
+Native Arr webhook events are forwarded to all registered JellyTV devices. Event filtering is controlled in each Arr app's Webhook connection settings.
+
+---
+
 ### Want to join our community?
 
 Help us grow, ask for new features and get support 🚀
