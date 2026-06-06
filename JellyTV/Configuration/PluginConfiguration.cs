@@ -39,6 +39,10 @@ public class PluginConfiguration : BasePluginConfiguration
         ForwardPlaybackStop = false;
         ArrWebhookSecret = CreateWebhookSecret();
         SeerrBaseUrl = string.Empty;
+        BannerEnabled = false;
+        BannerIconType = "info";
+        BannerMessage = string.Empty;
+        BannerExpiresAtUtc = null;
         OverrideServerLanguage = false;
         PreferredLanguage = "en";
         // Deprecated: RegisteredUsers moved to persistent store file.
@@ -64,6 +68,27 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the URL token required for native *arr webhook requests.
     /// </summary>
     public string? ArrWebhookSecret { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the server-wide app banner is enabled.
+    /// </summary>
+    public bool BannerEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the server-wide app banner icon type.
+    /// </summary>
+    public string? BannerIconType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the server-wide app banner message.
+    /// </summary>
+    public string? BannerMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional UTC expiration timestamp for the server-wide app banner.
+    /// Null means the banner does not expire.
+    /// </summary>
+    public string? BannerExpiresAtUtc { get; set; }
 
     /// <summary>
     /// Gets or sets the Seerr base URL configured by the admin.

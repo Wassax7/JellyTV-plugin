@@ -73,9 +73,37 @@ const normalizeId = id => id ? id.toString().toLowerCase().replace(/[^a-f0-9]/g,
 const getInitials = name => (name || '?').charAt(0).toUpperCase();
 const getPrefClass = v => v === true ? 'pref-on' : v === false ? 'pref-off' : 'pref-default';
 const getPrefLabel = v => v === true ? 'On' : v === false ? 'Off' : 'Default';
+const normalizeBannerIconType = value => ['info', 'warning', 'alert', 'success'].includes(value) ? value : 'info';
 const updateLanguageOverrideState = () => {
     const override = $('#OverrideServerLanguage').checked;
     $('#PreferredLanguage').disabled = !override;
+};
+const updateBannerState = () => {
+    const enabled = $('#BannerEnabled').checked;
+    const expirationEnabled = enabled && $('#BannerExpirationEnabled').checked;
+    $('#BannerMessageContainer').style.display = enabled ? '' : 'none';
+    $('#BannerIconTypeContainer').style.display = enabled ? '' : 'none';
+    $('#BannerExpirationToggleContainer').style.display = enabled ? '' : 'none';
+    $('#BannerExpiresAtContainer').style.display = expirationEnabled ? '' : 'none';
+    $('#BannerMessage').disabled = !enabled;
+    $('#BannerIconType').disabled = !enabled;
+    $('#BannerExpirationEnabled').disabled = !enabled;
+    $('#BannerExpiresAt').disabled = !expirationEnabled;
+};
+
+const utcToLocalDateTimeInput = value => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+    return local.toISOString().slice(0, 16);
+};
+
+const localDateTimeInputToUtc = value => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 };
 
 const makeSecret = () => {
@@ -136,11 +164,11 @@ $$('.jellytv-tab').forEach(tab => {
     });
 });
 
-// Character counter
-(() => {
-    const textarea = $('#BroadcastMessage');
-    const counter = $('#BroadcastCharCount');
-    const container = $('#BroadcastCharCounter');
+// Character counters
+const attachCounter = (textareaSelector, countSelector, containerSelector) => {
+    const textarea = $(textareaSelector);
+    const counter = $(countSelector);
+    const container = $(containerSelector);
     const maxLength = 4000;
 
     const updateCounter = () => {
@@ -153,7 +181,10 @@ $$('.jellytv-tab').forEach(tab => {
 
     textarea.addEventListener('input', updateCounter);
     updateCounter();
-})();
+};
+
+attachCounter('#BroadcastMessage', '#BroadcastCharCount', '#BroadcastCharCounter');
+attachCounter('#BannerMessage', '#BannerCharCount', '#BannerCharCounter');
 
 // Configuration loading
 const loadConfiguration = async () => {
@@ -161,6 +192,13 @@ const loadConfiguration = async () => {
     try {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
         $('#SeerrBaseUrl').value = config.SeerrBaseUrl || '';
+        $('#BannerEnabled').checked = config.BannerEnabled === true;
+        $('#BannerIconType').value = normalizeBannerIconType(config.BannerIconType);
+        $('#BannerMessage').value = config.BannerMessage || '';
+        $('#BannerExpiresAt').value = utcToLocalDateTimeInput(config.BannerExpiresAtUtc);
+        $('#BannerExpirationEnabled').checked = !!config.BannerExpiresAtUtc;
+        $('#BannerCharCount').textContent = ($('#BannerMessage').value || '').length;
+        updateBannerState();
         $('#ArrWebhookSecret').value = config.ArrWebhookSecret || makeSecret();
         updateArrWebhookUrl();
         $('#OverrideServerLanguage').checked = config.OverrideServerLanguage === true;
@@ -302,6 +340,66 @@ $('#TemplateConfigForm').addEventListener('submit', async e => {
 
 // Broadcast notification
 $('#OverrideServerLanguage').addEventListener('change', updateLanguageOverrideState);
+$('#BannerEnabled').addEventListener('change', updateBannerState);
+$('#BannerExpirationEnabled').addEventListener('change', updateBannerState);
+
+$('#SaveBannerBtn').addEventListener('click', async e => {
+    e.preventDefault();
+    Dashboard.showLoadingMsg();
+    hideStatus('#BannerStatus');
+
+    try {
+        const enabled = $('#BannerEnabled').checked;
+        const message = $('#BannerMessage').value.trim();
+        if (enabled && !message) {
+            showStatus('#BannerStatus', 'error', 'A message is required when the banner is enabled.');
+            return;
+        }
+
+        const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
+        config.BannerEnabled = enabled;
+        config.BannerIconType = enabled ? normalizeBannerIconType($('#BannerIconType').value) : 'info';
+        config.BannerMessage = enabled ? message : '';
+        config.BannerExpiresAtUtc = enabled && $('#BannerExpirationEnabled').checked
+            ? localDateTimeInputToUtc($('#BannerExpiresAt').value)
+            : null;
+        const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
+        showStatus('#BannerStatus', 'success', 'Banner saved successfully!');
+        Dashboard.processPluginConfigurationUpdateResult(result);
+    } catch (err) {
+        showStatus('#BannerStatus', 'error', err.message || 'Failed to save banner.');
+    } finally {
+        Dashboard.hideLoadingMsg();
+    }
+});
+
+$('#ClearBannerBtn').addEventListener('click', async e => {
+    e.preventDefault();
+    Dashboard.showLoadingMsg();
+    hideStatus('#BannerStatus');
+
+    try {
+        const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
+        config.BannerEnabled = false;
+        config.BannerIconType = 'info';
+        config.BannerMessage = '';
+        config.BannerExpiresAtUtc = null;
+        const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
+        $('#BannerEnabled').checked = false;
+        $('#BannerIconType').value = 'info';
+        $('#BannerExpirationEnabled').checked = false;
+        $('#BannerMessage').value = '';
+        $('#BannerExpiresAt').value = '';
+        $('#BannerCharCount').textContent = '0';
+        updateBannerState();
+        showStatus('#BannerStatus', 'success', 'Banner cleared successfully!');
+        Dashboard.processPluginConfigurationUpdateResult(result);
+    } catch (err) {
+        showStatus('#BannerStatus', 'error', err.message || 'Failed to clear banner.');
+    } finally {
+        Dashboard.hideLoadingMsg();
+    }
+});
 
 $('#SendBroadcastBtn').addEventListener('click', async e => {
     e.preventDefault();

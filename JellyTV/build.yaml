@@ -1,7 +1,7 @@
 ---
 name: "JellyTV"
 guid: "6e2f3159-1f9e-4972-b70c-8a076905f2b3"
-version: "0.6.0.0"
+version: "0.7.0.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Push notifications for the JellyTV iOS app"
@@ -12,6 +12,5 @@ owner: "Wassax7"
 artifacts:
   - "Jellyfin.Plugin.JellyTV.dll"
 changelog: >
-  Adds native Servarr webhook support through the existing notifications endpoint, moves webhook
-  settings into the Settings tab, bumps the plugin version to 0.6.0.0, and changes the plugin GUID
-  to avoid conflicting with TheIntroDB while retaining legacy JellyTV API route compatibility.
+  Adds app-facing admin settings APIs and a server-wide message banner, with dashboard controls
+  for creating temporary or persistent app announcements.

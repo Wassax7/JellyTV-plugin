@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Jellyfin.Data;
@@ -6,6 +7,7 @@ using Jellyfin.Database.Implementations.Enums;
 using Jellyfin.Plugin.JellyTV.Api.Models;
 using Jellyfin.Plugin.JellyTV.Configuration;
 using Jellyfin.Plugin.JellyTV.Services;
+using Jellyfin.Plugin.JellyTV.Utilities;
 using MediaBrowser.Controller.Authentication;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Net;
@@ -21,6 +23,7 @@ namespace Jellyfin.Plugin.JellyTV.Api;
 [Route("Plugins/{pluginGuid}/JellyTV")]
 public class JellyTVController : ControllerBase
 {
+    private const string DefaultBannerIconType = "info";
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromSeconds(60);
     private static readonly Guid[] LegacyPluginIds =
     [
@@ -87,6 +90,143 @@ public class JellyTVController : ControllerBase
 
     private static bool IsAppPluginRoute(Guid routeGuid)
         => IsCurrentPluginRoute(routeGuid) || LegacyPluginIds.Contains(routeGuid);
+
+    /// <summary>
+    /// Gets app-facing JellyTV settings for the authenticated user.
+    /// </summary>
+    /// <param name="pluginGuid">The plugin guid from the route.</param>
+    /// <param name="userId">The Jellyfin user id.</param>
+    /// <returns>HTTP 200 with app-facing settings.</returns>
+    [HttpGet("app-settings")]
+    public async Task<ActionResult<AppSettingsResponse>> GetAppSettings([FromRoute] string pluginGuid, [FromQuery] string userId)
+    {
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return BadRequest("userId is required");
+        }
+
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        var normalizedUserId = NormalizeUserId(userId);
+        if (!CanAccessUser(auth, normalizedUserId))
+        {
+            return Forbid("Cannot read another user's settings");
+        }
+
+        return Ok(BuildAppSettingsResponse(normalizedUserId));
+    }
+
+    /// <summary>
+    /// Gets administrator-managed JellyTV settings and registered user summaries.
+    /// </summary>
+    /// <param name="pluginGuid">The plugin guid from the route.</param>
+    /// <returns>HTTP 200 with administrator settings.</returns>
+    [HttpGet("admin/settings")]
+    public async Task<ActionResult<AdminSettingsDto>> GetAdminSettings([FromRoute] string pluginGuid)
+    {
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
+        {
+            return NotFound();
+        }
+
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        if (!IsAdminOrApiKey(auth))
+        {
+            return Forbid("Admin access required");
+        }
+
+        return Ok(BuildAdminSettingsResponse());
+    }
+
+    /// <summary>
+    /// Updates administrator-managed JellyTV settings.
+    /// </summary>
+    /// <param name="pluginGuid">The plugin guid from the route.</param>
+    /// <param name="request">The settings payload.</param>
+    /// <returns>HTTP 200 with updated administrator settings.</returns>
+    [HttpPut("admin/settings")]
+    public async Task<ActionResult<AdminSettingsDto>> UpdateAdminSettings([FromRoute] string pluginGuid, [FromBody] AdminSettingsDto request)
+    {
+        if (!TryParseRouteGuid(pluginGuid, out var routeGuid) || !IsAppPluginRoute(routeGuid))
+        {
+            return NotFound();
+        }
+
+        if (request == null)
+        {
+            return BadRequest("settings payload is required");
+        }
+
+        var auth = await GetAuthenticatedAuthorizationAsync().ConfigureAwait(false);
+        if (auth == null)
+        {
+            return Unauthorized("Authentication required");
+        }
+
+        if (!IsAdminOrApiKey(auth))
+        {
+            return Forbid("Admin access required");
+        }
+
+        var plugin = Plugin.Instance;
+        if (plugin == null)
+        {
+            return StatusCode(500, new { error = "Plugin is not initialized" });
+        }
+
+        var config = plugin.Configuration;
+        var (isValidUrl, normalizedUrl, urlError) = UrlValidator.ValidateUrl(request.SeerrBaseUrl);
+        if (!isValidUrl)
+        {
+            return BadRequest(new { error = urlError ?? "Invalid Seerr URL" });
+        }
+
+        config.SeerrBaseUrl = normalizedUrl ?? string.Empty;
+
+        if (request.Notifications != null)
+        {
+            config.ForwardItemAdded = request.Notifications.ForwardItemAdded;
+            config.ForwardPlaybackStart = request.Notifications.ForwardPlaybackStart;
+            config.ForwardPlaybackStop = request.Notifications.ForwardPlaybackStop;
+        }
+
+        if (request.Banner != null)
+        {
+            var bannerResult = ApplyBannerSettings(config, request.Banner);
+            if (!string.IsNullOrWhiteSpace(bannerResult))
+            {
+                return BadRequest(new { error = bannerResult });
+            }
+        }
+
+        if (request.ArrWebhooks != null)
+        {
+            var secret = request.ArrWebhooks.Secret?.Trim();
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                return BadRequest(new { error = "arrWebhooks.secret is required" });
+            }
+
+            config.ArrWebhookSecret = secret;
+        }
+
+        plugin.UpdateConfiguration(config);
+        return Ok(BuildAdminSettingsResponse());
+    }
 
     /// <summary>
     /// Gets per-user delivery preferences for JellyTV events along with admin settings.
@@ -420,6 +560,226 @@ public class JellyTVController : ControllerBase
             return StatusCode(500, new { error = "Internal error" });
         }
     }
+
+    private static AppSettingsResponse BuildAppSettingsResponse(string userId)
+    {
+        var config = Plugin.Instance?.Configuration;
+        var adminDefaults = BuildNotificationSettings(config);
+        var userPreferences = BuildUserPreferenceSettings(JellyTVUserStore.GetPreferences(userId));
+
+        return new AppSettingsResponse
+        {
+            SeerrBaseUrl = (config?.SeerrBaseUrl ?? string.Empty).Trim(),
+            Banner = BuildActiveBanner(config),
+            Notifications = new AppNotificationSettingsDto
+            {
+                AdminDefaults = adminDefaults,
+                UserPreferences = userPreferences,
+                Effective = BuildEffectiveNotificationSettings(adminDefaults, userPreferences)
+            }
+        };
+    }
+
+    private AdminSettingsDto BuildAdminSettingsResponse()
+    {
+        var config = Plugin.Instance?.Configuration;
+        var adminDefaults = BuildNotificationSettings(config);
+
+        return new AdminSettingsDto
+        {
+            SeerrBaseUrl = (config?.SeerrBaseUrl ?? string.Empty).Trim(),
+            Banner = BuildStoredBanner(config),
+            ArrWebhooks = BuildArrWebhookSettings(config),
+            Notifications = adminDefaults,
+            RegisteredUsers = JellyTVUserStore.Load()
+                .Select(user =>
+                {
+                    var preferences = BuildUserPreferenceSettings(JellyTVUserStore.GetPreferences(user.UserId));
+                    var profile = Guid.TryParse(user.UserId, out var userGuid) ? _userManager.GetUserById(userGuid) : null;
+                    return new AdminRegisteredUserDto
+                    {
+                        UserId = user.UserId,
+                        Name = profile?.Username,
+                        IsDeleted = profile == null,
+                        Preferences = preferences,
+                        Effective = BuildEffectiveNotificationSettings(adminDefaults, preferences)
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    private static ArrWebhookSettingsDto BuildArrWebhookSettings(PluginConfiguration? config)
+    {
+        const string path = "/JellyTV/notifications";
+        var secret = config?.ArrWebhookSecret?.Trim() ?? string.Empty;
+        return new ArrWebhookSettingsDto
+        {
+            Secret = secret,
+            Path = path,
+            RelativeUrl = string.IsNullOrWhiteSpace(secret)
+                ? path
+                : path + "?token=" + Uri.EscapeDataString(secret)
+        };
+    }
+
+    private static NotificationSettingsDto BuildNotificationSettings(PluginConfiguration? config)
+        => new NotificationSettingsDto
+        {
+            ForwardItemAdded = config?.ForwardItemAdded ?? true,
+            ForwardPlaybackStart = config?.ForwardPlaybackStart ?? false,
+            ForwardPlaybackStop = config?.ForwardPlaybackStop ?? false
+        };
+
+    private static UserPreferenceSettingsDto BuildUserPreferenceSettings(JellyTVUserPreferences? preferences)
+        => new UserPreferenceSettingsDto
+        {
+            ForwardItemAdded = preferences?.ForwardItemAdded,
+            ForwardPlaybackStart = preferences?.ForwardPlaybackStart,
+            ForwardPlaybackStop = preferences?.ForwardPlaybackStop
+        };
+
+    private static NotificationSettingsDto BuildEffectiveNotificationSettings(
+        NotificationSettingsDto adminDefaults,
+        UserPreferenceSettingsDto userPreferences)
+        => new NotificationSettingsDto
+        {
+            ForwardItemAdded = adminDefaults.ForwardItemAdded && (userPreferences.ForwardItemAdded ?? true),
+            ForwardPlaybackStart = adminDefaults.ForwardPlaybackStart && (userPreferences.ForwardPlaybackStart ?? true),
+            ForwardPlaybackStop = adminDefaults.ForwardPlaybackStop && (userPreferences.ForwardPlaybackStop ?? true)
+        };
+
+    private static BannerSettingsDto BuildStoredBanner(PluginConfiguration? config)
+        => new BannerSettingsDto
+        {
+            Enabled = config?.BannerEnabled ?? false,
+            IconType = NormalizeBannerIconType(config?.BannerIconType) ?? DefaultBannerIconType,
+            Message = config?.BannerMessage ?? string.Empty,
+            ExpiresAtUtc = string.IsNullOrWhiteSpace(config?.BannerExpiresAtUtc) ? null : config!.BannerExpiresAtUtc
+        };
+
+    private static BannerSettingsDto? BuildActiveBanner(PluginConfiguration? config)
+    {
+        if (config?.BannerEnabled != true || string.IsNullOrWhiteSpace(config.BannerMessage))
+        {
+            return null;
+        }
+
+        var expiresAtUtc = config.BannerExpiresAtUtc;
+        if (!string.IsNullOrWhiteSpace(expiresAtUtc))
+        {
+            if (!TryReadUtcTimestamp(expiresAtUtc, out var expiresAt))
+            {
+                return null;
+            }
+
+            if (expiresAt <= DateTimeOffset.UtcNow)
+            {
+                return null;
+            }
+        }
+
+        return new BannerSettingsDto
+        {
+            Enabled = true,
+            IconType = NormalizeBannerIconType(config.BannerIconType) ?? DefaultBannerIconType,
+            Message = config.BannerMessage.Trim(),
+            ExpiresAtUtc = string.IsNullOrWhiteSpace(expiresAtUtc) ? null : NormalizeUtcTimestamp(expiresAtUtc!)
+        };
+    }
+
+    private static string? ApplyBannerSettings(PluginConfiguration config, BannerSettingsDto banner)
+    {
+        if (!banner.Enabled)
+        {
+            config.BannerEnabled = false;
+            config.BannerIconType = DefaultBannerIconType;
+            config.BannerMessage = string.Empty;
+            config.BannerExpiresAtUtc = null;
+            return null;
+        }
+
+        var message = banner.Message?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "Banner message is required when banner is enabled";
+        }
+
+        const int MaxBannerMessageLength = 4000;
+        if (message.Length > MaxBannerMessageLength)
+        {
+            message = message.Substring(0, MaxBannerMessageLength);
+        }
+
+        string? expiresAtUtc = null;
+        if (!string.IsNullOrWhiteSpace(banner.ExpiresAtUtc))
+        {
+            if (!HasUtcDesignator(banner.ExpiresAtUtc!) || !TryReadUtcTimestamp(banner.ExpiresAtUtc!, out var expiresAt))
+            {
+                return "expiresAtUtc must be an ISO-8601 UTC timestamp";
+            }
+
+            expiresAtUtc = FormatUtcTimestamp(expiresAt);
+        }
+
+        var iconType = NormalizeBannerIconType(banner.IconType);
+        if (iconType == null && !string.IsNullOrWhiteSpace(banner.IconType))
+        {
+            return "iconType must be one of: info, warning, alert, success";
+        }
+
+        config.BannerEnabled = true;
+        config.BannerIconType = iconType ?? DefaultBannerIconType;
+        config.BannerMessage = message;
+        config.BannerExpiresAtUtc = expiresAtUtc;
+        return null;
+    }
+
+    private static string? NormalizeBannerIconType(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "info" => "info",
+            "warning" => "warning",
+            "alert" => "alert",
+            "success" => "success",
+            _ => null
+        };
+    }
+
+    private static bool HasUtcDesignator(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length > 0
+            && (trimmed[^1] == 'Z'
+            || trimmed[^1] == 'z'
+            || trimmed.EndsWith("+00:00", StringComparison.Ordinal)
+            || trimmed.EndsWith("-00:00", StringComparison.Ordinal));
+    }
+
+    private static bool TryReadUtcTimestamp(string value, out DateTimeOffset timestamp)
+    {
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out timestamp))
+        {
+            timestamp = timestamp.ToUniversalTime();
+            return true;
+        }
+
+        timestamp = default;
+        return false;
+    }
+
+    private static string NormalizeUtcTimestamp(string value)
+        => TryReadUtcTimestamp(value, out var timestamp) ? FormatUtcTimestamp(timestamp) : value.Trim();
+
+    private static string FormatUtcTimestamp(DateTimeOffset timestamp)
+        => timestamp.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
     private async Task<AuthorizationInfo?> GetAuthenticatedAuthorizationAsync()
     {

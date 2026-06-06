@@ -60,14 +60,17 @@
 
 @media all and (min-width: 900px) {
     #tab-app.jellytv-tab-content.active {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 20px;
-        align-items: start;
+        display: block;
+        column-count: 2;
+        column-gap: 20px;
     }
 
     #tab-app .jellytv-card {
-        margin-bottom: 0;
+        display: inline-block;
+        width: 100%;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-sizing: border-box;
     }
 
     #TemplateConfigForm {

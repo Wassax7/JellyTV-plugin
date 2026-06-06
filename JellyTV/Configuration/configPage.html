@@ -84,6 +84,55 @@
                     </div>
 
                     <div class="jellytv-card">
+                        <div class="jellytv-card-title">Message Banner</div>
+                        <div class="fieldDescription" style="margin-bottom: 15px;">
+                            Server-wide message displayed by JellyTV apps. Leave expiration empty to keep it active until cleared.
+                        </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="BannerEnabled" type="checkbox" is="emby-checkbox" />
+                                <span>Enable app banner</span>
+                            </label>
+                        </div>
+                        <div id="BannerMessageContainer" class="jellytv-textarea-container">
+                            <label class="inputLabel" for="BannerMessage">Message</label>
+                            <textarea id="BannerMessage" class="jellytv-textarea" maxlength="4000"
+                                placeholder="Enter a message for JellyTV apps..."></textarea>
+                            <div id="BannerCharCounter" class="jellytv-char-counter">
+                                <span id="BannerCharCount">0</span> / 4000
+                            </div>
+                        </div>
+                        <div id="BannerIconTypeContainer" class="selectContainer">
+                            <label class="inputLabel" for="BannerIconType">Icon Type</label>
+                            <select id="BannerIconType" is="emby-select">
+                                <option value="info">Info</option>
+                                <option value="warning">Warning</option>
+                                <option value="alert">Alert</option>
+                                <option value="success">Success</option>
+                            </select>
+                        </div>
+                        <div id="BannerExpirationToggleContainer" class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="BannerExpirationEnabled" type="checkbox" is="emby-checkbox" />
+                                <span>Set expiration date</span>
+                            </label>
+                        </div>
+                        <div id="BannerExpiresAtContainer" class="inputContainer">
+                            <label class="inputLabel" for="BannerExpiresAt">Expiration</label>
+                            <input id="BannerExpiresAt" type="datetime-local" is="emby-input" />
+                        </div>
+                        <div id="BannerStatus" class="jellytv-status" style="display: none;"></div>
+                        <div class="jellytv-button-row">
+                            <button is="emby-button" type="button" id="SaveBannerBtn" class="raised emby-button">
+                                <span>Save Banner</span>
+                            </button>
+                            <button is="emby-button" type="button" id="ClearBannerBtn" class="emby-button">
+                                <span>Clear</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="jellytv-card">
                         <div class="jellytv-card-title">Send Broadcast Notification</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">
                             Send a custom notification to all registered users. This is useful for announcements,
