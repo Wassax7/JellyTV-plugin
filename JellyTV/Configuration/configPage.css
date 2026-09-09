@@ -1,377 +1,774 @@
-.jellytv-logo {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    object-fit: cover;
-    aspect-ratio: 2/1;
+#TemplateConfigPage {
+    --jellytv-primary: #0066cc;
+    --jellytv-primary-focus: #0071e3;
+    --jellytv-primary-on-dark: #2997ff;
+    --jellytv-canvas: #1d1d1f;
+    --jellytv-parchment: #0d0d0f;
+    --jellytv-pearl: #252527;
+    --jellytv-ink: #f5f5f7;
+    --jellytv-ink-muted: #b3b3b8;
+    --jellytv-ink-faint: #86868b;
+    --jellytv-hairline: rgba(255, 255, 255, 0.12);
+    --jellytv-danger: #ff6961;
+    --jellytv-danger-soft: rgba(255, 105, 97, 0.1);
+    background: var(--jellytv-parchment) !important;
+    color: var(--jellytv-ink) !important;
+    color-scheme: dark;
+    font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    min-height: 100%;
 }
 
-@media all and (min-width: 768px) {
-    .jellytv-logo {
-        aspect-ratio: unset;
-    }
-}
-
-.jellytv-tabs {
-    display: flex;
-    justify-content: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 20px;
-    gap: 0;
-}
-
-.jellytv-tab {
-    padding: 12px 24px;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-}
-
-.jellytv-tab:hover {
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.jellytv-tab.active {
-    color: #00a4dc;
-    border-bottom-color: #00a4dc;
-}
-
-.jellytv-tab-content {
-    display: none;
-}
-
-.jellytv-tab-content.active {
-    display: block;
-}
-
-.jellytv-card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-@media all and (min-width: 900px) {
-    #tab-app.jellytv-tab-content.active {
-        display: block;
-        column-count: 2;
-        column-gap: 20px;
-    }
-
-    #tab-app .jellytv-card {
-        display: inline-block;
-        width: 100%;
-        break-inside: avoid;
-        page-break-inside: avoid;
-        box-sizing: border-box;
-    }
-
-    #TemplateConfigForm {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 20px;
-        align-items: start;
-        width: 100%;
-        max-width: none;
-    }
-
-    #TemplateConfigForm .jellytv-card {
-        margin-bottom: 0;
-    }
-
-    #TemplateConfigForm > div:last-child {
-        grid-column: 1 / -1;
-    }
-}
-
-.jellytv-button-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 15px;
-}
-
-.jellytv-card-title {
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 15px;
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.jellytv-user-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.jellytv-user-list li {
-    padding: 10px 15px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-@media all and (max-width: 600px) {
-    .jellytv-user-list li {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .jellytv-user-info {
-        width: 100%;
-    }
-
-    .jellytv-user-prefs {
-        margin-top: 8px;
-        margin-left: 42px;
-    }
-
-    .jellytv-delete-btn {
-        margin-top: 10px;
-        align-self: flex-end;
-    }
-}
-
-.jellytv-user-list li:last-child {
-    margin-bottom: 0;
-}
-
-.jellytv-user-icon {
-    width: 32px;
-    height: 32px;
-    background: #00a4dc;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.jellytv-status {
-    padding: 12px 16px;
-    border-radius: 4px;
-    margin: 15px 0;
-    font-size: 14px;
-}
-
-.jellytv-status.success {
-    background: rgba(76, 175, 80, 0.15);
-    color: #4caf50;
-    border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.jellytv-status.error {
-    background: rgba(244, 67, 54, 0.15);
-    color: #f44336;
-    border: 1px solid rgba(244, 67, 54, 0.3);
-}
-
-.jellytv-empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.jellytv-empty-state-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-    opacity: 0.5;
-}
-
-.jellytv-textarea-container {
-    position: relative;
-}
-
-.jellytv-textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 12px 14px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.2);
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 14px;
-    line-height: 1.5;
-    resize: vertical;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+#TemplateConfigPage *,
+#TemplateConfigPage *::before,
+#TemplateConfigPage *::after {
     box-sizing: border-box;
 }
 
-.jellytv-textarea:focus {
-    outline: none;
-    border-color: #00a4dc;
-    box-shadow: 0 0 0 2px rgba(0, 164, 220, 0.2);
+#TemplateConfigPage .jellytv-page {
+    padding: 2rem 1.5rem 5rem;
 }
 
-.jellytv-textarea::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+#TemplateConfigPage .jellytv-shell {
+    width: 100%;
+    max-width: 90rem !important;
+    margin: 0 auto !important;
+    color: var(--jellytv-ink);
 }
 
-.jellytv-char-counter {
+#TemplateConfigPage .jellytv-tabs {
+    position: sticky;
+    top: 0.75rem;
+    z-index: 2;
     display: flex;
-    justify-content: flex-end;
-    margin-top: 6px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    justify-content: flex-start;
+    gap: 0.25rem;
+    width: max-content;
+    max-width: 100%;
+    margin: 0 auto 4rem;
+    padding: 0.35rem;
+    overflow-x: auto;
+    background: rgba(37, 37, 39, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    scrollbar-width: none;
 }
 
-.jellytv-char-counter.warning {
-    color: #ff9800;
+#TemplateConfigPage .jellytv-tabs::-webkit-scrollbar {
+    display: none;
 }
 
-.jellytv-char-counter.error {
-    color: #f44336;
-}
-
-.jellytv-user-info {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.jellytv-user-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.jellytv-user-name {
-    font-weight: 500;
-    margin-right: 10px;
-}
-
-.jellytv-user-prefs {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-}
-
-.jellytv-pref-tag {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    cursor: help;
+#TemplateConfigPage .jellytv-tab {
+    min-height: 2.5rem;
+    margin: 0;
+    padding: 0.65rem 1.25rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--jellytv-ink-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: -0.014em;
+    line-height: 1;
+    transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
     white-space: nowrap;
 }
 
-.jellytv-pref-tag.pref-on {
-    background: rgba(76, 175, 80, 0.2);
-    color: #4caf50;
-    border: 1px solid rgba(76, 175, 80, 0.5);
+#TemplateConfigPage .jellytv-tab:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--jellytv-ink);
 }
 
-.jellytv-pref-tag.pref-off {
-    background: rgba(244, 67, 54, 0.2);
-    color: #f44336;
-    border: 1px solid rgba(244, 67, 54, 0.5);
+#TemplateConfigPage .jellytv-tab.active {
+    background: var(--jellytv-primary);
+    color: #ffffff;
 }
 
-.jellytv-pref-tag.pref-default {
-    background: rgba(158, 158, 158, 0.2);
-    color: #9e9e9e;
-    border: 1px solid rgba(158, 158, 158, 0.5);
+#TemplateConfigPage .jellytv-tab:active {
+    transform: scale(0.96);
 }
 
-.jellytv-delete-btn {
-    background: transparent;
-    border: 1px solid rgba(244, 67, 54, 0.5);
-    color: #f44336;
-    padding: 6px 12px;
-    border-radius: 4px;
+#TemplateConfigPage .jellytv-tab:focus-visible {
+    outline: 2px solid var(--jellytv-primary-focus);
+    outline-offset: 2px;
+}
+
+#TemplateConfigPage .jellytv-tab-content {
+    display: none;
+}
+
+#TemplateConfigPage .jellytv-tab-content.active {
+    display: block;
+    animation: jellytv-content-in 260ms ease both;
+}
+
+@keyframes jellytv-content-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#TemplateConfigPage .jellytv-section-heading {
+    max-width: 44rem;
+    margin: 0 0 2.5rem;
+}
+
+#TemplateConfigPage .jellytv-section-heading h2 {
+    margin: 0;
+    color: var(--jellytv-ink);
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: clamp(2.125rem, 4vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+    text-wrap: balance;
+}
+
+#TemplateConfigPage .jellytv-section-heading > p:last-child {
+    max-width: 38rem;
+    margin: 1rem 0 0;
+    color: var(--jellytv-ink-muted);
+    font-size: 1.0625rem;
+    letter-spacing: -0.022em;
+    line-height: 1.47;
+    text-wrap: pretty;
+}
+
+#TemplateConfigPage .jellytv-card-grid,
+#TemplateConfigPage .jellytv-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+#TemplateConfigPage #TemplateConfigForm {
+    max-width: none !important;
+}
+
+#TemplateConfigPage .jellytv-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin: 0;
+    padding: clamp(1.5rem, 3vw, 2rem);
+    background: var(--jellytv-canvas);
+    border: 1px solid var(--jellytv-hairline);
+    border-radius: 1.125rem;
+    color: var(--jellytv-ink);
+}
+
+#TemplateConfigPage .jellytv-card-seerr,
+#TemplateConfigPage .jellytv-card-broadcast {
+    grid-column: span 5;
+}
+
+#TemplateConfigPage .jellytv-card-banner {
+    grid-column: 6 / -1;
+    grid-row: 1 / span 2;
+}
+
+#TemplateConfigPage .jellytv-card-title {
+    margin: 0 0 0.7rem;
+    color: var(--jellytv-ink);
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+}
+
+#TemplateConfigPage .fieldDescription {
+    max-width: 62ch;
+    margin: 0 0 1.5rem !important;
+    color: var(--jellytv-ink-muted) !important;
+    font-size: 0.9375rem;
+    letter-spacing: -0.012em;
+    line-height: 1.5;
+}
+
+#TemplateConfigPage .inputContainer,
+#TemplateConfigPage .selectContainer,
+#TemplateConfigPage .jellytv-textarea-container {
+    width: 100%;
+    margin: 0 0 1.25rem;
+}
+
+#TemplateConfigPage .inputLabel {
+    display: block;
+    margin: 0 0 0.55rem;
+    color: var(--jellytv-ink) !important;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.014em;
+}
+
+#TemplateConfigPage input[is="emby-input"],
+#TemplateConfigPage select[is="emby-select"],
+#TemplateConfigPage .jellytv-textarea {
+    width: 100%;
+    min-height: 3rem;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--jellytv-hairline) !important;
+    border-radius: 0.6875rem !important;
+    background: var(--jellytv-pearl) !important;
+    box-shadow: none !important;
+    color: var(--jellytv-ink) !important;
+    font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+#TemplateConfigPage input[is="emby-input"]:focus,
+#TemplateConfigPage select[is="emby-select"]:focus,
+#TemplateConfigPage .jellytv-textarea:focus {
+    border-color: var(--jellytv-primary-focus) !important;
+    background: var(--jellytv-canvas) !important;
+    outline: 2px solid rgba(0, 113, 227, 0.18);
+    outline-offset: 1px;
+}
+
+#TemplateConfigPage input[is="emby-input"]::placeholder,
+#TemplateConfigPage .jellytv-textarea::placeholder {
+    color: var(--jellytv-ink-faint);
+    opacity: 1;
+}
+
+#TemplateConfigPage input[is="emby-input"][readonly] {
+    color: var(--jellytv-ink-muted) !important;
+    font-size: 0.875rem;
+}
+
+#TemplateConfigPage select[is="emby-select"]:disabled,
+#TemplateConfigPage input[is="emby-input"]:disabled,
+#TemplateConfigPage .jellytv-textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+#TemplateConfigPage .jellytv-textarea {
+    min-height: 8.5rem;
+    resize: vertical;
+}
+
+#TemplateConfigPage .jellytv-char-counter {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.45rem;
+    color: var(--jellytv-ink-faint);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+#TemplateConfigPage .jellytv-char-counter.warning {
+    color: var(--jellytv-ink);
+}
+
+#TemplateConfigPage .jellytv-char-counter.error {
+    color: var(--jellytv-danger);
+}
+
+#TemplateConfigPage .checkboxContainer {
+    margin: 0 0 1.25rem;
+}
+
+#TemplateConfigPage .emby-checkbox-label {
+    color: var(--jellytv-ink) !important;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+}
+
+#TemplateConfigPage input[type="checkbox"] {
+    accent-color: var(--jellytv-primary);
+}
+
+#TemplateConfigPage .jellytv-settings-events {
+    grid-column: span 7;
+    grid-row: span 2;
+}
+
+#TemplateConfigPage .jellytv-settings-webhooks,
+#TemplateConfigPage .jellytv-settings-language {
+    grid-column: 8 / -1;
+}
+
+#TemplateConfigPage .jellytv-settings-events .checkboxContainer {
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--jellytv-hairline);
+}
+
+#TemplateConfigPage .jellytv-settings-events .checkboxContainer:last-child {
+    margin-bottom: 0;
+}
+
+#TemplateConfigPage .jellytv-settings-events .fieldDescription {
+    margin: 0.35rem 0 0 2.1rem !important;
+}
+
+#TemplateConfigPage .jellytv-card-actions {
+    margin-top: auto !important;
+    padding-top: 0.5rem;
+}
+
+#TemplateConfigPage .jellytv-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+#TemplateConfigPage button[is="emby-button"],
+#TemplateConfigPage .jellytv-delete-btn {
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.7rem 1.25rem;
+    border-radius: 9999px !important;
+    box-shadow: none !important;
     cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
+    font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: -0.014em;
+    line-height: 1;
+    text-transform: none;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
-.jellytv-delete-btn:hover {
-    background: rgba(244, 67, 54, 0.15);
-    border-color: #f44336;
+#TemplateConfigPage #SaveSeerrBtn,
+#TemplateConfigPage #SaveBannerBtn,
+#TemplateConfigPage #SendBroadcastBtn,
+#TemplateConfigPage #TemplateConfigForm button[type="submit"] {
+    border: 1px solid var(--jellytv-primary) !important;
+    background: var(--jellytv-primary) !important;
+    color: #ffffff !important;
+}
+
+#TemplateConfigPage #TemplateConfigForm button[type="submit"] {
+    width: auto !important;
+    min-width: 0;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#TemplateConfigPage #SaveSeerrBtn:hover,
+#TemplateConfigPage #SaveBannerBtn:hover,
+#TemplateConfigPage #SendBroadcastBtn:hover,
+#TemplateConfigPage #TemplateConfigForm button[type="submit"]:hover {
+    background: #005ebc !important;
+    border-color: #005ebc !important;
+}
+
+#TemplateConfigPage #ClearBannerBtn,
+#TemplateConfigPage #GenerateArrWebhookSecretBtn {
+    border: 1px solid var(--jellytv-primary) !important;
+    background: transparent !important;
+    color: var(--jellytv-primary) !important;
+}
+
+#TemplateConfigPage #ClearBannerBtn:hover,
+#TemplateConfigPage #GenerateArrWebhookSecretBtn:hover {
+    background: rgba(0, 102, 204, 0.07) !important;
+}
+
+#TemplateConfigPage button[is="emby-button"]:active,
+#TemplateConfigPage .jellytv-delete-btn:active,
+.jellytv-modal-btn:active {
+    transform: scale(0.96);
+}
+
+#TemplateConfigPage button[is="emby-button"]:focus-visible,
+#TemplateConfigPage .jellytv-delete-btn:focus-visible,
+.jellytv-modal-btn:focus-visible {
+    outline: 2px solid var(--jellytv-primary-focus, #0071e3);
+    outline-offset: 2px;
+}
+
+#TemplateConfigPage .jellytv-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    background: rgba(37, 37, 39, 0.9);
+    border: 1px solid var(--jellytv-hairline);
+    border-radius: 1.125rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+#TemplateConfigPage .jellytv-form-actions-title {
+    margin: 0 0 0.2rem;
+    color: var(--jellytv-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+#TemplateConfigPage .jellytv-form-actions .fieldDescription {
+    margin: 0 !important;
+}
+
+#TemplateConfigPage .jellytv-status {
+    margin: 0 0 1.25rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(41, 151, 255, 0.28);
+    border-radius: 0.6875rem;
+    background: rgba(41, 151, 255, 0.1);
+    color: #7fc1ff;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+#TemplateConfigPage .jellytv-status:empty {
+    display: none;
+}
+
+#TemplateConfigPage .jellytv-status.error {
+    border-color: rgba(255, 105, 97, 0.28);
+    background: var(--jellytv-danger-soft);
+    color: var(--jellytv-danger);
+}
+
+#TemplateConfigPage .jellytv-users-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+#TemplateConfigPage .jellytv-users-card > .jellytv-card-title,
+#TemplateConfigPage .jellytv-users-card > .fieldDescription,
+#TemplateConfigPage .jellytv-users-card > .jellytv-status {
+    margin-right: clamp(1.5rem, 3vw, 2rem) !important;
+    margin-left: clamp(1.5rem, 3vw, 2rem) !important;
+}
+
+#TemplateConfigPage .jellytv-users-card > .jellytv-card-title {
+    margin-top: clamp(1.5rem, 3vw, 2rem);
+}
+
+#TemplateConfigPage .jellytv-user-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#TemplateConfigPage .jellytv-user-list li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 4.75rem;
+    padding: 1rem clamp(1.5rem, 3vw, 2rem);
+    border-top: 1px solid var(--jellytv-hairline);
+    background: var(--jellytv-canvas);
+}
+
+#TemplateConfigPage .jellytv-user-list li.is-deleted {
+    opacity: 0.56;
+}
+
+#TemplateConfigPage .jellytv-user-list .jellytv-list-state {
+    justify-content: center;
+    color: var(--jellytv-ink-muted);
+    text-align: center;
+}
+
+#TemplateConfigPage .jellytv-user-info {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+#TemplateConfigPage .jellytv-user-avatar,
+#TemplateConfigPage .jellytv-user-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.6875rem;
+    flex: 0 0 auto;
+}
+
+#TemplateConfigPage .jellytv-user-avatar {
+    object-fit: cover;
+}
+
+#TemplateConfigPage .jellytv-user-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--jellytv-primary);
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+#TemplateConfigPage .jellytv-user-name {
+    color: var(--jellytv-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+#TemplateConfigPage .jellytv-user-prefs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+#TemplateConfigPage .jellytv-pref-tag {
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--jellytv-hairline);
+    border-radius: 0.5rem;
+    background: var(--jellytv-parchment);
+    color: var(--jellytv-ink-muted);
+    cursor: help;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+#TemplateConfigPage .jellytv-pref-tag.pref-on {
+    border-color: rgba(41, 151, 255, 0.28);
+    background: rgba(41, 151, 255, 0.1);
+    color: var(--jellytv-primary-on-dark);
+}
+
+#TemplateConfigPage .jellytv-pref-tag.pref-off {
+    color: var(--jellytv-ink-faint);
+    text-decoration: line-through;
+}
+
+#TemplateConfigPage .jellytv-delete-btn {
+    min-height: 2.25rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgba(255, 105, 97, 0.3);
+    background: transparent;
+    color: var(--jellytv-danger);
+}
+
+#TemplateConfigPage .jellytv-delete-btn:hover {
+    border-color: rgba(255, 105, 97, 0.5);
+    background: var(--jellytv-danger-soft);
+}
+
+#TemplateConfigPage .jellytv-empty-state {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 4.5rem 1.5rem !important;
+    color: var(--jellytv-ink-muted);
+    text-align: center;
+}
+
+#TemplateConfigPage .jellytv-empty-state strong {
+    margin-bottom: 0.4rem;
+    color: var(--jellytv-ink);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+#TemplateConfigPage .jellytv-empty-state span {
+    max-width: 30rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+#TemplateConfigPage .jellytv-empty-state-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0 auto 1rem;
+    border: 1px solid var(--jellytv-hairline);
+    border-radius: 50%;
+    color: var(--jellytv-primary);
+    font-size: 1.2rem;
+    line-height: 2.65rem;
 }
 
 .jellytv-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    inset: 0;
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .jellytv-modal {
-    background: #1c1c1e;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    width: min(100%, 26rem);
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.125rem;
+    background: #1d1d1f;
+    color: #f5f5f7;
+    color-scheme: dark;
 }
 
 .jellytv-modal-title {
-    font-size: 18px;
+    margin: 0 0 0.75rem;
+    color: #f5f5f7;
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 12px;
-    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: -0.025em;
+    line-height: 1.15;
 }
 
 .jellytv-modal-body {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 20px;
+    margin: 0 0 1.5rem;
+    color: #b3b3b8;
+    font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 0.9375rem;
     line-height: 1.5;
+}
+
+.jellytv-modal-body strong {
+    color: #f5f5f7;
 }
 
 .jellytv-modal-actions {
     display: flex;
-    gap: 12px;
     justify-content: flex-end;
+    gap: 0.65rem;
 }
 
 .jellytv-modal-btn {
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    min-height: 2.75rem;
+    padding: 0.7rem 1.25rem;
+    border-radius: 9999px;
+    box-shadow: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font: 400 0.875rem/1 "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
 .jellytv-modal-btn-cancel {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #252527;
+    color: #f5f5f7;
 }
 
 .jellytv-modal-btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: #303033;
 }
 
 .jellytv-modal-btn-delete {
-    background: #f44336;
-    border: none;
-    color: white;
+    border: 1px solid #b42318;
+    background: #b42318;
+    color: #ffffff;
 }
 
 .jellytv-modal-btn-delete:hover {
-    background: #d32f2f;
+    background: #961d14;
+}
+
+@media all and (max-width: 900px) {
+    #TemplateConfigPage .jellytv-card-seerr,
+    #TemplateConfigPage .jellytv-card-banner,
+    #TemplateConfigPage .jellytv-card-broadcast,
+    #TemplateConfigPage .jellytv-settings-events,
+    #TemplateConfigPage .jellytv-settings-webhooks,
+    #TemplateConfigPage .jellytv-settings-language {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+}
+
+@media all and (max-width: 640px) {
+    #TemplateConfigPage .jellytv-page {
+        padding: 1.25rem 0 3rem;
+    }
+
+    #TemplateConfigPage .jellytv-tabs {
+        top: 0.5rem;
+        max-width: calc(100% - 2rem);
+        margin-bottom: 3rem;
+    }
+
+    #TemplateConfigPage .jellytv-tab {
+        padding-right: 1rem;
+        padding-left: 1rem;
+    }
+
+    #TemplateConfigPage .jellytv-tab-content {
+        padding: 0 1rem;
+    }
+
+    #TemplateConfigPage .jellytv-section-heading {
+        margin-bottom: 2rem;
+    }
+
+    #TemplateConfigPage .jellytv-section-heading h2 {
+        font-size: 2rem;
+    }
+
+    #TemplateConfigPage .jellytv-card-grid,
+    #TemplateConfigPage .jellytv-settings-grid {
+        gap: 1rem;
+    }
+
+    #TemplateConfigPage .jellytv-form-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #TemplateConfigPage .jellytv-form-actions button {
+        width: auto !important;
+        align-self: flex-start;
+    }
+
+    #TemplateConfigPage .jellytv-user-list li,
+    #TemplateConfigPage .jellytv-user-info {
+        align-items: flex-start;
+    }
+
+    #TemplateConfigPage .jellytv-user-list li {
+        flex-direction: column;
+    }
+
+    #TemplateConfigPage .jellytv-user-info {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    #TemplateConfigPage .jellytv-user-prefs {
+        width: 100%;
+        margin: 0.25rem 0 0 3.55rem;
+    }
+
+    #TemplateConfigPage .jellytv-delete-btn {
+        align-self: flex-end;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #TemplateConfigPage *,
+    #TemplateConfigPage *::before,
+    #TemplateConfigPage *::after,
+    .jellytv-modal-btn {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
 }

@@ -172,54 +172,49 @@ internal static class JellyTVUserStore
 
     private static void SaveCore(List<JellyTVUserTokens> users)
     {
-        try
+        var path = GetStorePath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var recordsMap = new Dictionary<string, UserStoreRecord>(StringComparer.OrdinalIgnoreCase);
+        foreach (var user in users)
         {
-            var path = GetStorePath();
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var recordsMap = new Dictionary<string, UserStoreRecord>(StringComparer.OrdinalIgnoreCase);
-            foreach (var user in users)
+            var normalizedId = NormalizeUserId(user.UserId);
+            if (string.IsNullOrWhiteSpace(normalizedId))
             {
-                var normalizedId = NormalizeUserId(user.UserId);
-                if (string.IsNullOrWhiteSpace(normalizedId))
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                if (!recordsMap.TryGetValue(normalizedId, out var record))
+            if (!recordsMap.TryGetValue(normalizedId, out var record))
+            {
+                record = new UserStoreRecord
                 {
-                    record = new UserStoreRecord
-                    {
-                        UserId = normalizedId,
-                        Tokens = new List<string>()
-                    };
-                    recordsMap[normalizedId] = record;
-                }
+                    UserId = normalizedId,
+                    Tokens = new List<string>()
+                };
+                recordsMap[normalizedId] = record;
+            }
 
-                if (user.Tokens != null)
+            if (user.Tokens != null)
+            {
+                foreach (var token in user.Tokens)
                 {
-                    foreach (var token in user.Tokens)
+                    if (!string.IsNullOrWhiteSpace(token))
                     {
-                        if (!string.IsNullOrWhiteSpace(token))
+                        var encrypted = EncryptToken(token);
+                        if (!record.Tokens.Any(existing => string.Equals(existing, encrypted, StringComparison.Ordinal)))
                         {
-                            var encrypted = EncryptToken(token);
-                            if (!record.Tokens.Any(existing => string.Equals(existing, encrypted, StringComparison.Ordinal)))
-                            {
-                                record.Tokens.Add(encrypted);
-                            }
+                            record.Tokens.Add(encrypted);
                         }
                     }
                 }
-
-                record.Preferences = ToRecord(GetPreferences(normalizedId));
             }
 
-            var json = JsonSerializer.Serialize(recordsMap.Values);
-            File.WriteAllText(path, json);
+            record.Preferences = ToRecord(GetPreferences(normalizedId));
         }
-        catch
-        {
-            // ignore
-        }
+
+        var json = JsonSerializer.Serialize(recordsMap.Values);
+        var temporaryPath = string.Concat(path, ".tmp");
+        File.WriteAllText(temporaryPath, json);
+        File.Move(temporaryPath, path, true);
     }
 
     public static (JellyTVUserTokens User, bool IsNewToken) UpsertToken(string userId, string token)

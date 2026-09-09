@@ -137,9 +137,9 @@ const hideStatus = sel => { $(sel).style.display = 'none'; };
 const showConfirmDialog = (title, message) => new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.className = 'jellytv-modal-overlay';
-    overlay.innerHTML = `<div class="jellytv-modal">
-        <div class="jellytv-modal-title">${title}</div>
-        <div class="jellytv-modal-body">${message}</div>
+    overlay.innerHTML = `<div class="jellytv-modal" role="dialog" aria-modal="true" aria-labelledby="jellytv-dialog-title" aria-describedby="jellytv-dialog-body">
+        <div id="jellytv-dialog-title" class="jellytv-modal-title">${title}</div>
+        <div id="jellytv-dialog-body" class="jellytv-modal-body">${message}</div>
         <div class="jellytv-modal-actions">
             <button class="jellytv-modal-btn jellytv-modal-btn-cancel">Cancel</button>
             <button class="jellytv-modal-btn jellytv-modal-btn-delete">Delete</button>
@@ -153,14 +153,30 @@ const showConfirmDialog = (title, message) => new Promise(resolve => {
 });
 
 // Tab switching
-$$('.jellytv-tab').forEach(tab => {
+const tabs = Array.from($$('.jellytv-tab'));
+const activateTab = tab => {
+    const targetTab = tab.getAttribute('data-tab');
+    tabs.forEach(item => {
+        const isActive = item === tab;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    $$('.jellytv-tab-content').forEach(content => content.classList.remove('active'));
+    $(`#tab-${targetTab}`).classList.add('active');
+    if (targetTab === 'users') renderRegisteredUsers();
+};
+
+tabs.forEach((tab, index) => {
     tab.addEventListener('click', function() {
-        const targetTab = this.getAttribute('data-tab');
-        $$('.jellytv-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        $$('.jellytv-tab-content').forEach(c => c.classList.remove('active'));
-        $(`#tab-${targetTab}`).classList.add('active');
-        if (targetTab === 'users') renderRegisteredUsers();
+        activateTab(this);
+    });
+    tab.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextTab = tabs[(index + direction + tabs.length) % tabs.length];
+        activateTab(nextTab);
+        nextTab.focus();
     });
 });
 
@@ -222,6 +238,7 @@ const loadConfiguration = async () => {
 
 // User management
 const deleteUser = async (userId, displayName) => {
+    hideStatus('#UsersStatus');
     const confirmed = await showConfirmDialog(
         'Remove User Registration',
         `Are you sure you want to remove <strong>${displayName}</strong> from push notifications? They will need to re-register their device in the JellyTV app to receive notifications again.`
@@ -237,7 +254,7 @@ const deleteUser = async (userId, displayName) => {
         }
         await renderRegisteredUsers();
     } catch (err) {
-        alert(err.message || 'Failed to delete user.');
+        showStatus('#UsersStatus', 'error', err.message || 'Failed to remove user registration.');
     } finally {
         Dashboard.hideLoadingMsg();
     }
@@ -245,18 +262,19 @@ const deleteUser = async (userId, displayName) => {
 
 const renderRegisteredUsers = async () => {
     const list = $('#RegisteredUsersList');
-    list.innerHTML = '<li style="justify-content: center; background: transparent;">Loading...</li>';
+    hideStatus('#UsersStatus');
+    list.innerHTML = '<li class="jellytv-list-state">Loading devices…</li>';
 
     try {
         const entries = await apiGet(`Plugins/${PLUGIN_ID}/JellyTV/users`) || [];
         list.innerHTML = '';
 
         if (!entries.length) {
-            list.innerHTML = `<div class="jellytv-empty-state">
-                <div class="jellytv-empty-state-icon">&#128274;</div>
-                <div>No registered users yet</div>
-                <div style="font-size: 12px; margin-top: 8px;">Users will appear here once they register their devices in the JellyTV app.</div>
-            </div>`;
+            list.innerHTML = `<li class="jellytv-empty-state">
+                <div class="jellytv-empty-state-icon" aria-hidden="true">·</div>
+                <strong>No registered devices</strong>
+                <span>Users will appear here after they register a device in JellyTV.</span>
+            </li>`;
             return;
         }
 
@@ -277,7 +295,7 @@ const renderRegisteredUsers = async () => {
             const userPrefs = prefs[i] || {};
 
             const li = document.createElement('li');
-            if (isDeleted) li.style.opacity = '0.6';
+            if (isDeleted) li.classList.add('is-deleted');
 
             const imageUrl = !isDeleted && userData.hasImage
                 ? `${buildApiUrl(`Users/${userData.id}/Images/Primary`)}?height=80&quality=90`
@@ -307,7 +325,8 @@ const renderRegisteredUsers = async () => {
         });
     } catch (err) {
         console.error('Failed to load registered users:', err);
-        list.innerHTML = '<li style="color: #f44336;">Failed to load registered users.</li>';
+        list.innerHTML = '<li class="jellytv-list-state">Registered devices are unavailable.</li>';
+        showStatus('#UsersStatus', 'error', 'Failed to load registered devices.');
     }
 };
 
@@ -364,7 +383,7 @@ $('#SaveBannerBtn').addEventListener('click', async e => {
             ? localDateTimeInputToUtc($('#BannerExpiresAt').value)
             : null;
         const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
-        showStatus('#BannerStatus', 'success', 'Banner saved successfully!');
+        showStatus('#BannerStatus', 'success', 'Banner saved.');
         Dashboard.processPluginConfigurationUpdateResult(result);
     } catch (err) {
         showStatus('#BannerStatus', 'error', err.message || 'Failed to save banner.');
@@ -392,7 +411,7 @@ $('#ClearBannerBtn').addEventListener('click', async e => {
         $('#BannerExpiresAt').value = '';
         $('#BannerCharCount').textContent = '0';
         updateBannerState();
-        showStatus('#BannerStatus', 'success', 'Banner cleared successfully!');
+        showStatus('#BannerStatus', 'success', 'Banner cleared.');
         Dashboard.processPluginConfigurationUpdateResult(result);
     } catch (err) {
         showStatus('#BannerStatus', 'error', err.message || 'Failed to clear banner.');
@@ -420,7 +439,7 @@ $('#SendBroadcastBtn').addEventListener('click', async e => {
             const data = await res.json();
             throw new Error(data.error || 'Failed to send notification');
         }
-        showStatus('#BroadcastStatus', 'success', 'Notification sent successfully!');
+        showStatus('#BroadcastStatus', 'success', 'Notification sent.');
         $('#BroadcastMessage').value = '';
         $('#BroadcastCharCount').textContent = '0';
         $('#BroadcastCharCounter').classList.remove('warning', 'error');
@@ -441,7 +460,7 @@ $('#SaveSeerrBtn').addEventListener('click', async e => {
         const config = await ApiClient.getPluginConfiguration(PLUGIN_ID);
         config.SeerrBaseUrl = $('#SeerrBaseUrl').value.trim();
         const result = await ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
-        showStatus('#SeerrStatus', 'success', 'Seerr URL saved successfully!');
+        showStatus('#SeerrStatus', 'success', 'Seerr URL saved.');
         Dashboard.processPluginConfigurationUpdateResult(result);
     } catch (err) {
         showStatus('#SeerrStatus', 'error', err.message || 'Failed to save.');

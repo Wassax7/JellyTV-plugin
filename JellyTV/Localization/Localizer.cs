@@ -202,6 +202,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "New item available",
             ["ItemAddedNamed"] = "{Item} is now available",
+            ["ItemUpdatedNamed"] = "{Item} has been updated",
             // Episode batch
             ["EpisodeNewForSeries"] = "New episode available for {Series}",
             ["EpisodesNewNoSeries"] = "{Count} new episodes available",
@@ -224,6 +225,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nouvel élément disponible",
             ["ItemAddedNamed"] = "{Item} est maintenant disponible",
+            ["ItemUpdatedNamed"] = "{Item} a été mis à jour",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nouvel épisode disponible pour {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nouveaux épisodes disponibles",
@@ -246,6 +248,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Neuer Inhalt verfügbar",
             ["ItemAddedNamed"] = "{Item} ist jetzt verfügbar",
+            ["ItemUpdatedNamed"] = "{Item} wurde aktualisiert",
             // Episode batch
             ["EpisodeNewForSeries"] = "Neue Folge für {Series} verfügbar",
             ["EpisodesNewNoSeries"] = "{Count} neue Folgen verfügbar",
@@ -268,6 +271,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nuevo contenido disponible",
             ["ItemAddedNamed"] = "{Item} ya está disponible",
+            ["ItemUpdatedNamed"] = "{Item} se ha actualizado",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nuevo episodio disponible para {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nuevos episodios disponibles",
@@ -290,6 +294,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nuovo contenuto disponibile",
             ["ItemAddedNamed"] = "{Item} è ora disponibile",
+            ["ItemUpdatedNamed"] = "{Item} è stato aggiornato",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nuovo episodio disponibile per {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nuovi episodi disponibili",
@@ -312,6 +317,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Novo conteúdo disponível",
             ["ItemAddedNamed"] = "{Item} está agora disponível",
+            ["ItemUpdatedNamed"] = "{Item} foi atualizado",
             // Episode batch
             ["EpisodeNewForSeries"] = "Novo episódio disponível para {Series}",
             ["EpisodesNewNoSeries"] = "{Count} novos episódios disponíveis",
@@ -334,6 +340,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "नई सामग्री उपलब्ध है",
             ["ItemAddedNamed"] = "{Item} अब उपलब्ध है",
+            ["ItemUpdatedNamed"] = "{Item} को अपडेट किया गया है",
             // Episode batch
             ["EpisodeNewForSeries"] = "{Series} के लिए नया एपिसोड उपलब्ध है",
             ["EpisodesNewNoSeries"] = "{Count} नए एपिसोड उपलब्ध हैं",
@@ -356,6 +363,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "محتوى جديد متاح",
             ["ItemAddedNamed"] = "{Item} متاح الآن",
+            ["ItemUpdatedNamed"] = "تم تحديث {Item}",
             // Episode batch
             ["EpisodeNewForSeries"] = "حلقة جديدة متاحة لـ {Series}",
             ["EpisodesNewNoSeries"] = "{Count} حلقات جديدة متاحة",
@@ -378,6 +386,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "新内容可用",
             ["ItemAddedNamed"] = "{Item} 现已可用",
+            ["ItemUpdatedNamed"] = "{Item} 已更新",
             // Episode batch
             ["EpisodeNewForSeries"] = "{Series} 有新剧集可用",
             ["EpisodesNewNoSeries"] = "{Count} 集新剧集可用",
@@ -400,6 +409,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Dostupan je novi sadržaj",
             ["ItemAddedNamed"] = "{Item} je sada dostupan",
+            ["ItemUpdatedNamed"] = "{Item} je ažuriran",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nova epizoda dostupna je za {Series}",
             ["EpisodesNewNoSeries"] = "{Count} novih epizoda dostupno",
@@ -422,6 +432,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Je dostupný nový obsah",
             ["ItemAddedNamed"] = "{Item} je nyní k dispozici",
+            ["ItemUpdatedNamed"] = "{Item} byl aktualizován",
             // Episode batch
             ["EpisodeNewForSeries"] = "Je dostupná nová epizoda seriálu {Series}",
             ["EpisodesNewNoSeries"] = "Je dostupných {Count} nových epizod",
@@ -444,6 +455,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nyt indhold tilgængeligt",
             ["ItemAddedNamed"] = "{Item} er nu tilgængelig",
+            ["ItemUpdatedNamed"] = "{Item} er blevet opdateret",
             // Episode batch
             ["EpisodeNewForSeries"] = "Ny episode tilgængelig for {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nye episoder tilgængelige",
@@ -466,6 +478,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "תוכן חדש זמין",
             ["ItemAddedNamed"] = "{Item} זמין כעת",
+            ["ItemUpdatedNamed"] = "{Item} עודכן",
             // Episode batch
             ["EpisodeNewForSeries"] = "פרק חדש זמין עבור {Series}",
             ["EpisodesNewNoSeries"] = "{Count} פרקים חדשים זמינים",
@@ -488,6 +501,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Új tartalom érhető el",
             ["ItemAddedNamed"] = "{Item} már elérhető",
+            ["ItemUpdatedNamed"] = "{Item} frissítve lett",
             // Episode batch
             ["EpisodeNewForSeries"] = "Új epizód érhető el ehhez: {Series}",
             ["EpisodesNewNoSeries"] = "{Count} új epizód érhető el",
@@ -510,6 +524,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nytt innhold tilgjengelig",
             ["ItemAddedNamed"] = "{Item} er nå tilgjengelig",
+            ["ItemUpdatedNamed"] = "{Item} er oppdatert",
             // Episode batch
             ["EpisodeNewForSeries"] = "Ny episode tilgjengelig for {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nye episoder tilgjengelig",
@@ -532,6 +547,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nieuwe inhoud beschikbaar",
             ["ItemAddedNamed"] = "{Item} is nu beschikbaar",
+            ["ItemUpdatedNamed"] = "{Item} is bijgewerkt",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nieuwe aflevering beschikbaar voor {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nieuwe afleveringen beschikbaar",
@@ -554,6 +570,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nowa zawartość dostępna",
             ["ItemAddedNamed"] = "{Item} jest teraz dostępny",
+            ["ItemUpdatedNamed"] = "{Item} został zaktualizowany",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nowy odcinek dostępny dla {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nowych odcinków dostępnych",
@@ -576,6 +593,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Доступен новый контент",
             ["ItemAddedNamed"] = "{Item} теперь доступен",
+            ["ItemUpdatedNamed"] = "{Item} обновлён",
             // Episode batch
             ["EpisodeNewForSeries"] = "Новый эпизод доступен для {Series}",
             ["EpisodesNewNoSeries"] = "Доступно новых эпизодов: {Count}",
@@ -598,6 +616,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Na voljo je nova vsebina",
             ["ItemAddedNamed"] = "{Item} je zdaj na voljo",
+            ["ItemUpdatedNamed"] = "{Item} je bil posodobljen",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nova epizoda je na voljo za {Series}",
             ["EpisodesNewNoSeries"] = "Na voljo je {Count} novih epizod",
@@ -620,6 +639,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nytt innehåll tillgängligt",
             ["ItemAddedNamed"] = "{Item} är nu tillgängligt",
+            ["ItemUpdatedNamed"] = "{Item} har uppdaterats",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nytt avsnitt tillgängligt för {Series}",
             ["EpisodesNewNoSeries"] = "{Count} nya avsnitt tillgängliga",
@@ -642,6 +662,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Nuevo contenido disponible",
             ["ItemAddedNamed"] = "{Item} ya está disponible",
+            ["ItemUpdatedNamed"] = "{Item} se ha actualizado",
             // Episode batch
             ["EpisodeNewForSeries"] = "Nuevo episodio disponible para {Series}",
             ["EpisodesNewNoSeries"] = "{Count} episodios nuevos disponibles",
@@ -664,6 +685,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Yeni içerik mevcut",
             ["ItemAddedNamed"] = "{Item} artık mevcut",
+            ["ItemUpdatedNamed"] = "{Item} güncellendi",
             // Episode batch
             ["EpisodeNewForSeries"] = "{Series} için yeni bölüm mevcut",
             ["EpisodesNewNoSeries"] = "{Count} yeni bölüm mevcut",
@@ -686,6 +708,7 @@ internal static class Localizer
             // Item added
             ["ItemAddedGeneric"] = "Доступний новий вміст",
             ["ItemAddedNamed"] = "{Item} тепер доступний",
+            ["ItemUpdatedNamed"] = "{Item} оновлено",
             // Episode batch
             ["EpisodeNewForSeries"] = "Новий епізод доступний для {Series}",
             ["EpisodesNewNoSeries"] = "Доступно нових епізодів: {Count}",

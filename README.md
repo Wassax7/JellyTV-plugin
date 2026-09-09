@@ -4,7 +4,7 @@ Allows your Jellyfin server to communicate with [JellyTV app](https://jellytv.ap
 
 ## Build and Install Manually
 
-1. Install [.NET Core SDK](https://dotnet.microsoft.com/download)
+1. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download)
 
 2. Build the plugin with the following command:
 
@@ -12,7 +12,7 @@ Allows your Jellyfin server to communicate with [JellyTV app](https://jellytv.ap
 dotnet publish --configuration Release
 ```
 
-3. Place the resulting .dll file from `bin/Release/net9.0/publish` into its own folder inside the Jellyfin plugin directory.
+3. Place the resulting .dll file from `bin/Release/net10.0/publish` into its own folder inside the Jellyfin plugin directory.
 
 ## Configure Webhooks
 

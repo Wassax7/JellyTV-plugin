@@ -1,9 +1,9 @@
 ---
 name: "JellyTV"
 guid: "6e2f3159-1f9e-4972-b70c-8a076905f2b3"
-version: "0.7.0.0"
-targetAbi: "10.11.0.0"
-framework: "net9.0"
+version: "0.8.0.0"
+targetAbi: "12.0.0.0"
+framework: "net10.0"
 overview: "Push notifications for the JellyTV iOS app"
 description: >
   Send push notifications to the JellyTV iOS app when media is added to your library or playback starts/stops. Supports per-user preferences and Seerr webhook integration.
@@ -12,5 +12,6 @@ owner: "Wassax7"
 artifacts:
   - "Jellyfin.Plugin.JellyTV.dll"
 changelog: >
-  Adds app-facing admin settings APIs and a server-wide message banner, with dashboard controls
-  for creating temporary or persistent app announcements.
+  Supports Jellyfin 12 and .NET 10, distinguishes existing library items in ItemAdded notifications,
+  sends localized titles for item added notifications, and redesigns the configuration page with
+  improved tab navigation, accessibility, and form sizing.

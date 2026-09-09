@@ -375,9 +375,16 @@ public class JellyTVController : ControllerBase
             return StatusCode(429, new { error = "Too many registration requests", retryAfter });
         }
 
-        var result = JellyTVUserStore.UpsertToken(request.UserId, cleanedToken);
-
-        return Ok(new { status = "ok", userId = request.UserId, tokens = result.User.Tokens.ToArray() });
+        try
+        {
+            var result = JellyTVUserStore.UpsertToken(request.UserId, cleanedToken);
+            return Ok(new { status = "ok", userId = request.UserId, tokens = result.User.Tokens.ToArray() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to persist JellyTV push token for user {UserId}", normalizedUserId);
+            return StatusCode(500, new { error = "Failed to persist device token" });
+        }
     }
 
     /// <summary>

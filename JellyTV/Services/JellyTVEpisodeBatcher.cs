@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.JellyTV.Localization;
+using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.JellyTV.Services;
@@ -19,32 +21,92 @@ public sealed class JellyTVEpisodeBatcher
 {
     private readonly ILogger<JellyTVEpisodeBatcher> _logger;
     private readonly JellyTVPushService _pushService;
+    private readonly ILibraryManager _libraryManager;
     private readonly TimeSpan _window = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _maxWindow = TimeSpan.FromSeconds(120);
     private readonly object _gate = new object();
     private readonly Dictionary<string, Batch> _batches = new Dictionary<string, Batch>(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<Task> _backgroundOperations = new HashSet<Task>();
+    private bool _accepting;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTVEpisodeBatcher"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="pushService">The push delivery service.</param>
-    public JellyTVEpisodeBatcher(ILogger<JellyTVEpisodeBatcher> logger, JellyTVPushService pushService)
+    /// <param name="libraryManager">The Jellyfin library manager.</param>
+    public JellyTVEpisodeBatcher(
+        ILogger<JellyTVEpisodeBatcher> logger,
+        JellyTVPushService pushService,
+        ILibraryManager libraryManager)
     {
         _logger = logger;
         _pushService = pushService;
+        _libraryManager = libraryManager;
+    }
+
+    /// <summary>
+    /// Allows the batcher to accept episode additions.
+    /// </summary>
+    public void Start()
+    {
+        lock (_gate)
+        {
+            _accepting = true;
+        }
+    }
+
+    /// <summary>
+    /// Stops accepting additions, cancels pending timers, and waits for sends already in progress.
+    /// </summary>
+    /// <param name="cancellationToken">Token controlling how long shutdown may wait.</param>
+    /// <returns>A task representing the shutdown operation.</returns>
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        Task[] backgroundOperations;
+        lock (_gate)
+        {
+            StopAcceptingPendingItems();
+            backgroundOperations = _backgroundOperations.ToArray();
+        }
+
+        if (backgroundOperations.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.WhenAll(backgroundOperations).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The host controls how long shutdown may wait for in-flight sends.
+        }
+    }
+
+    /// <summary>
+    /// Stops accepting additions and cancels all pending batch timers without waiting.
+    /// </summary>
+    public void CancelPending()
+    {
+        lock (_gate)
+        {
+            StopAcceptingPendingItems();
+        }
     }
 
     /// <summary>
     /// Enqueues an episode for batching by series name. Flushes after a short window.
     /// </summary>
+    /// <param name="seriesId">The Jellyfin series identifier, when available.</param>
     /// <param name="seriesKey">The series identifier key (preferably the Jellyfin series Id in N format, or series name as fallback).</param>
-    /// <param name="seriesName">The series display name.</param>
+    /// <param name="seriesName">The current series display name fallback.</param>
     /// <param name="episodeId">The individual episode Id (N format).</param>
     /// <param name="episodeDisplayName">Display name for the specific episode triggering the batch.</param>
     /// <param name="seasonNumber">Season number associated with the episode.</param>
     /// <param name="episodeNumber">Episode number within the season.</param>
-    public void Enqueue(string seriesKey, string seriesName, string episodeId, string episodeDisplayName, int? seasonNumber, int? episodeNumber)
+    public void Enqueue(Guid seriesId, string seriesKey, string seriesName, string episodeId, string episodeDisplayName, int? seasonNumber, int? episodeNumber)
     {
         if (string.IsNullOrWhiteSpace(seriesKey))
         {
@@ -54,20 +116,30 @@ public sealed class JellyTVEpisodeBatcher
                 episodeDisplayName,
                 seasonNumber,
                 episodeNumber);
-            _ = SendSingleEpisodeFallbackAsync(episodeId, seriesName, episodeDisplayName, seasonNumber, episodeNumber);
+            RunBackgroundOperation(() => SendSingleEpisodeFallbackAsync(episodeId, seriesName, episodeDisplayName, seasonNumber, episodeNumber));
             return;
         }
 
         lock (_gate)
         {
+            if (!_accepting)
+            {
+                return;
+            }
+
             if (!_batches.TryGetValue(seriesKey, out var batch))
             {
-                batch = new Batch(seriesName);
+                batch = new Batch(seriesId, seriesName);
                 _batches[seriesKey] = batch;
             }
 
             batch.Count++;
             batch.LastUpdated = DateTimeOffset.UtcNow;
+            if (seriesId != Guid.Empty)
+            {
+                batch.SeriesId = seriesId;
+            }
+
             batch.SeriesName = string.IsNullOrWhiteSpace(seriesName) ? batch.SeriesName : seriesName;
             if (batch.Count == 1)
             {
@@ -132,6 +204,7 @@ public sealed class JellyTVEpisodeBatcher
     private void FlushBatch(string key)
     {
         int count;
+        Guid seriesId;
         string name;
         string? singleEpisodeId;
         string? singleEpisodeName;
@@ -141,6 +214,11 @@ public sealed class JellyTVEpisodeBatcher
 
         lock (_gate)
         {
+            if (!_accepting)
+            {
+                return;
+            }
+
             if (!_batches.TryGetValue(key, out var current))
             {
                 _logger.LogDebug("Batch already flushed or removed: key={Key}", key);
@@ -148,6 +226,7 @@ public sealed class JellyTVEpisodeBatcher
             }
 
             count = current.Count;
+            seriesId = current.SeriesId;
             name = current.SeriesName;
             singleEpisodeId = current.SingleEpisodeId;
             singleEpisodeName = current.SingleEpisodeName;
@@ -160,13 +239,15 @@ public sealed class JellyTVEpisodeBatcher
             activeBatchesRemaining = _batches.Count;
         }
 
+        name = ResolveCurrentSeriesName(seriesId, name);
+
         if (count <= 0)
         {
             return;
         }
 
-        // Execute notification send asynchronously but don't block timer callback
-        _ = Task.Run(async () =>
+        // Execute notification send asynchronously but don't block timer callback.
+        RunBackgroundOperation(async () =>
         {
             try
             {
@@ -250,6 +331,72 @@ public sealed class JellyTVEpisodeBatcher
         });
     }
 
+    private string ResolveCurrentSeriesName(Guid seriesId, string fallbackName)
+    {
+        if (seriesId == Guid.Empty)
+        {
+            return fallbackName;
+        }
+
+        try
+        {
+            var series = _libraryManager.GetItemById(seriesId) as Series;
+            return string.IsNullOrWhiteSpace(series?.Name) ? fallbackName : series.Name;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Unable to reload the series name before flushing the episode batch: seriesId={SeriesId}; message={Message}",
+                seriesId.ToString("N"),
+                ex.Message);
+            return fallbackName;
+        }
+    }
+
+    private void RunBackgroundOperation(Func<Task> operation)
+    {
+        Task task;
+        lock (_gate)
+        {
+            if (!_accepting)
+            {
+                return;
+            }
+
+            task = Task.Run(operation);
+            _backgroundOperations.Add(task);
+        }
+
+        _ = ObserveBackgroundOperationAsync(task);
+    }
+
+    private async Task ObserveBackgroundOperationAsync(Task operation)
+    {
+        try
+        {
+            await operation.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _backgroundOperations.Remove(operation);
+            }
+        }
+    }
+
+    private void StopAcceptingPendingItems()
+    {
+        _accepting = false;
+        foreach (var batch in _batches.Values)
+        {
+            batch.Dispose();
+        }
+
+        _batches.Clear();
+    }
+
     private async Task SendSingleEpisodeFallbackAsync(string episodeId, string seriesName, string episodeDisplayName, int? seasonNumber, int? episodeNumber)
     {
         try
@@ -308,13 +455,16 @@ public sealed class JellyTVEpisodeBatcher
 
     private sealed class Batch : IDisposable
     {
-        public Batch(string seriesName)
+        public Batch(Guid seriesId, string seriesName)
         {
+            SeriesId = seriesId;
             SeriesName = seriesName;
             var now = DateTimeOffset.UtcNow;
             FirstAdded = now;
             LastUpdated = now;
         }
+
+        public Guid SeriesId { get; set; }
 
         public string SeriesName { get; set; }
 

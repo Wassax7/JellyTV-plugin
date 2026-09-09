@@ -3,21 +3,16 @@
 
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Configure JellyTV push notifications for Jellyfin.">
     <title>JellyTV</title>
 </head>
 
 <body>
     <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
         data-require="emby-input,emby-button,emby-select,emby-checkbox">
-        <div data-role="content">
-            <div class="content-primary">
-                <div style="margin: 0 0 20px 0; text-align: center;">
-                    <picture>
-                        <img loading="lazy" src="https://plugin.jellytv.app/logo_desk.png" alt="JellyTV"
-                            class="jellytv-logo">
-                    </picture>
-                </div>
-
+        <div data-role="content" class="jellytv-page">
+            <main class="content-primary jellytv-shell">
                 <script>
                     // Load external CSS dynamically for better compatibility
                     (function () {
@@ -55,55 +50,61 @@
                     })();
                 </script>
 
-                <!-- Tab Navigation -->
-                <div class="jellytv-tabs">
-                    <button class="jellytv-tab active" data-tab="app">App</button>
-                    <button class="jellytv-tab" data-tab="users">Users</button>
-                    <button class="jellytv-tab" data-tab="settings">Settings</button>
-                </div>
+                <nav class="jellytv-tabs" role="tablist" aria-label="JellyTV settings">
+                    <button id="tab-button-app" class="jellytv-tab active" type="button" role="tab"
+                        aria-selected="true" aria-controls="tab-app" data-tab="app">App</button>
+                    <button id="tab-button-users" class="jellytv-tab" type="button" role="tab"
+                        aria-selected="false" aria-controls="tab-users" data-tab="users">Users</button>
+                    <button id="tab-button-settings" class="jellytv-tab" type="button" role="tab"
+                        aria-selected="false" aria-controls="tab-settings" data-tab="settings">Settings</button>
+                </nav>
 
-                <!-- App Tab -->
-                <div id="tab-app" class="jellytv-tab-content active">
-                    <div class="jellytv-card">
-                        <div class="jellytv-card-title">Seerr Auto-Connect</div>
+                <section id="tab-app" class="jellytv-tab-content active" role="tabpanel"
+                    aria-labelledby="tab-button-app">
+                    <div class="jellytv-section-heading">
+                        <h2>What JellyTV apps receive</h2>
+                        <p>Connect companion services and send messages without leaving your Jellyfin dashboard.</p>
+                    </div>
+                    <div class="jellytv-card-grid jellytv-app-grid">
+                    <article class="jellytv-card jellytv-card-seerr">
+                        <div class="jellytv-card-title">Seerr auto-connect</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">
-                            Base URL to your Seerr instance. If configured, the JellyTV app will auto-configure
-                            Seerr access.
+                            Add your Seerr base URL so JellyTV can configure access automatically.
                         </div>
                         <div class="inputContainer">
                             <label class="inputLabel" for="SeerrBaseUrl">Base URL</label>
-                            <input id="SeerrBaseUrl" type="text" is="emby-input"
-                                placeholder="https://seerr.example.com" />
+                            <input id="SeerrBaseUrl" type="url" is="emby-input"
+                                placeholder="https://seerr.example.com" inputmode="url" />
                         </div>
                         <div id="SeerrStatus" class="jellytv-status" style="display: none;"></div>
                         <div style="margin-top: 15px;">
                             <button is="emby-button" type="button" id="SaveSeerrBtn" class="raised emby-button">
-                                <span>Save</span>
+                                <span>Save URL</span>
                             </button>
                         </div>
-                    </div>
+                    </article>
 
-                    <div class="jellytv-card">
-                        <div class="jellytv-card-title">Message Banner</div>
+                    <article class="jellytv-card jellytv-card-banner">
+                        <div class="jellytv-card-title">Message banner</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">
-                            Server-wide message displayed by JellyTV apps. Leave expiration empty to keep it active until cleared.
+                            Display one server-wide message in JellyTV. Leave expiration off to keep it visible until cleared.
                         </div>
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
                                 <input id="BannerEnabled" type="checkbox" is="emby-checkbox" />
-                                <span>Enable app banner</span>
+                                <span>Show a banner in the app</span>
                             </label>
                         </div>
                         <div id="BannerMessageContainer" class="jellytv-textarea-container">
                             <label class="inputLabel" for="BannerMessage">Message</label>
                             <textarea id="BannerMessage" class="jellytv-textarea" maxlength="4000"
-                                placeholder="Enter a message for JellyTV apps..."></textarea>
+                                placeholder="Share maintenance details or a server update."></textarea>
                             <div id="BannerCharCounter" class="jellytv-char-counter">
                                 <span id="BannerCharCount">0</span> / 4000
                             </div>
                         </div>
                         <div id="BannerIconTypeContainer" class="selectContainer">
-                            <label class="inputLabel" for="BannerIconType">Icon Type</label>
+                            <label class="inputLabel" for="BannerIconType">Message style</label>
                             <select id="BannerIconType" is="emby-select">
                                 <option value="info">Info</option>
                                 <option value="warning">Warning</option>
@@ -124,24 +125,23 @@
                         <div id="BannerStatus" class="jellytv-status" style="display: none;"></div>
                         <div class="jellytv-button-row">
                             <button is="emby-button" type="button" id="SaveBannerBtn" class="raised emby-button">
-                                <span>Save Banner</span>
+                                <span>Save banner</span>
                             </button>
                             <button is="emby-button" type="button" id="ClearBannerBtn" class="emby-button">
                                 <span>Clear</span>
                             </button>
                         </div>
-                    </div>
+                    </article>
 
-                    <div class="jellytv-card">
-                        <div class="jellytv-card-title">Send Broadcast Notification</div>
+                    <article class="jellytv-card jellytv-card-broadcast">
+                        <div class="jellytv-card-title">Broadcast notification</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">
-                            Send a custom notification to all registered users. This is useful for announcements,
-                            maintenance notices, or server updates.
+                            Send a notification now to every registered JellyTV device.
                         </div>
                         <div class="jellytv-textarea-container">
                             <label class="inputLabel" for="BroadcastMessage">Message</label>
                             <textarea id="BroadcastMessage" class="jellytv-textarea" maxlength="4000"
-                                placeholder="Enter your message here..."></textarea>
+                                placeholder="Write a concise message for everyone."></textarea>
                             <div id="BroadcastCharCounter" class="jellytv-char-counter">
                                 <span id="BroadcastCharCount">0</span> / 4000
                             </div>
@@ -149,55 +149,65 @@
                         <div id="BroadcastStatus" class="jellytv-status" style="display: none;"></div>
                         <div style="margin-top: 15px;">
                             <button is="emby-button" type="button" id="SendBroadcastBtn" class="raised emby-button">
-                                <span>Send to All Users</span>
+                                <span>Send to all users</span>
                             </button>
                         </div>
+                    </article>
                     </div>
-                </div>
+                </section>
 
-                <!-- Users Tab -->
-                <div id="tab-users" class="jellytv-tab-content">
-                    <div class="jellytv-card">
-                        <div class="jellytv-card-title">Registered Devices</div>
+                <section id="tab-users" class="jellytv-tab-content" role="tabpanel"
+                    aria-labelledby="tab-button-users">
+                    <div class="jellytv-section-heading">
+                        <h2>Registered devices</h2>
+                        <p>Review the people who can receive notifications and their individual preferences.</p>
+                    </div>
+                    <article class="jellytv-card jellytv-users-card">
+                        <div class="jellytv-card-title">Your JellyTV users</div>
                         <div class="fieldDescription" style="margin-bottom: 15px;">Users with at least one registered
                             device for push notifications.</div>
+                        <div id="UsersStatus" class="jellytv-status" role="status" aria-live="polite"></div>
                         <div id="RegisteredUsersContainer">
                             <ul id="RegisteredUsersList" class="jellytv-user-list"></ul>
                         </div>
-                    </div>
-                </div>
+                    </article>
+                </section>
 
-                <!-- Settings Tab -->
-                <div id="tab-settings" class="jellytv-tab-content">
-                    <form id="TemplateConfigForm">
-                        <div class="jellytv-card">
-                            <div class="jellytv-card-title">Push Notifications</div>
+                <section id="tab-settings" class="jellytv-tab-content" role="tabpanel"
+                    aria-labelledby="tab-button-settings">
+                    <div class="jellytv-section-heading">
+                        <h2>Settings</h2>
+                        <p>Choose which Jellyfin events are forwarded and how notification content is prepared.</p>
+                    </div>
+                    <form id="TemplateConfigForm" class="jellytv-settings-grid">
+                        <article class="jellytv-card jellytv-settings-events">
+                            <div class="jellytv-card-title">Push notifications</div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label class="emby-checkbox-label">
                                     <input id="ForwardItemAdded" type="checkbox" is="emby-checkbox" />
-                                    <span>Forward ItemAdded events</span>
+                                    <span>New library items</span>
                                 </label>
-                                <div class="fieldDescription">Notify users when new content is added to the library.
+                                <div class="fieldDescription">Notify users when new content is added or upgraded.
                                 </div>
                             </div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label class="emby-checkbox-label">
                                     <input id="ForwardPlaybackStart" type="checkbox" is="emby-checkbox" />
-                                    <span>Forward Playback Start events</span>
+                                    <span>Playback starts</span>
                                 </label>
-                                <div class="fieldDescription">Notify users when playback begins.</div>
+                                <div class="fieldDescription">Notify users when someone begins watching.</div>
                             </div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label class="emby-checkbox-label">
                                     <input id="ForwardPlaybackStop" type="checkbox" is="emby-checkbox" />
-                                    <span>Forward Playback Stop events</span>
+                                    <span>Playback stops</span>
                                 </label>
-                                <div class="fieldDescription">Notify users when playback ends.</div>
+                                <div class="fieldDescription">Notify users when someone finishes or stops watching.</div>
                             </div>
-                        </div>
+                        </article>
 
-                        <div class="jellytv-card">
-                            <div class="jellytv-card-title">Arr Webhooks</div>
+                        <article class="jellytv-card jellytv-settings-webhooks">
+                            <div class="jellytv-card-title">Arr webhooks</div>
                             <div class="fieldDescription" style="margin-bottom: 15px;">
                                 Receive native webhook notifications from Radarr, Sonarr, Lidarr, and Readarr through the JellyTV notifications endpoint.
                             </div>
@@ -209,23 +219,23 @@
                             <div id="ArrWebhookStatus" class="jellytv-status" style="display: none;"></div>
                             <div class="jellytv-button-row">
                                 <button is="emby-button" type="button" id="GenerateArrWebhookSecretBtn" class="emby-button">
-                                    <span>Regenerate URL Token</span>
+                                    <span>Regenerate URL token</span>
                                 </button>
                             </div>
-                        </div>
+                        </article>
 
-                        <div class="jellytv-card">
+                        <article class="jellytv-card jellytv-settings-language">
                             <div class="jellytv-card-title">Language</div>
                             <div class="fieldDescription" style="margin-bottom: 15px;">By default, push notifications use the Jellyfin server language.</div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label class="emby-checkbox-label">
                                     <input id="OverrideServerLanguage" type="checkbox" is="emby-checkbox" />
-                                    <span>Override Jellyfin default language</span>
+                                    <span>Use a separate language for JellyTV</span>
                                 </label>
                                 <div class="fieldDescription">Enable this to use a separate notification language for JellyTV.</div>
                             </div>
                             <div class="selectContainer">
-                                <label class="inputLabel" for="PreferredLanguage">Notification Language</label>
+                                <label class="inputLabel" for="PreferredLanguage">Notification language</label>
                                 <select id="PreferredLanguage" is="emby-select">
                                     <option value="en">English (default)</option>
                                     <option value="ar">العربية</option>
@@ -252,17 +262,21 @@
                                     <option value="uk">Українська</option>
                                 </select>
                             </div>
-                        </div>
+                        </article>
 
-                        <div>
-                            <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                                <span>Save</span>
+                        <div class="jellytv-form-actions">
+                            <div class="jellytv-form-actions-copy">
+                                <div class="jellytv-form-actions-title">Ready to apply your changes?</div>
+                                <div class="fieldDescription">Saved settings take effect immediately.</div>
+                            </div>
+                            <button is="emby-button" type="submit" class="raised button-submit emby-button">
+                                <span>Save settings</span>
                             </button>
                         </div>
                     </form>
-                </div>
+                </section>
 
-            </div>
+            </main>
         </div>
 
         <script>
