@@ -127,6 +127,7 @@ public sealed class JellyTVNotificationsController : ControllerBase
 
         int sent = 0;
         int skipped = 0;
+        var groups = new Dictionary<(string Title, string Body), HashSet<string>>();
         foreach (var req in requests)
         {
             var title = (req.Title ?? string.Empty).Trim();
@@ -180,8 +181,21 @@ public sealed class JellyTVNotificationsController : ControllerBase
                 targets = targetIds;
             }
 
-            await _pushService.SendCustomAsync(title, body, targets).ConfigureAwait(false);
+            var key = (title, body);
+            if (!groups.TryGetValue(key, out var recipients))
+            {
+                recipients = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                groups.Add(key, recipients);
+            }
+
+            recipients.UnionWith(targets);
+            // Preserve the response count of accepted input entries, not relay requests.
             sent++;
+        }
+
+        foreach (var group in groups)
+        {
+            await _pushService.SendCustomWebhookAsync(group.Key.Title, group.Key.Body, group.Value).ConfigureAwait(false);
         }
 
         return Ok(new { status = "ok", processed = sent, skipped });

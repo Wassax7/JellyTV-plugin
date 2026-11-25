@@ -19,6 +19,7 @@ public sealed class JellyTVPushService
     private const string RelayUrl = "https://push.jellytv.app/api/push";
     private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
     private readonly ILogger<JellyTVPushService> _logger;
+    private readonly HttpClient _http;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTVPushService"/> class.
@@ -28,8 +29,17 @@ public sealed class JellyTVPushService
     public JellyTVPushService(
         ILogger<JellyTVPushService> logger,
         IServerConfigurationManager serverConfigurationManager)
+        : this(logger, serverConfigurationManager, Http)
+    {
+    }
+
+    internal JellyTVPushService(
+        ILogger<JellyTVPushService> logger,
+        IServerConfigurationManager serverConfigurationManager,
+        HttpClient http)
     {
         _logger = logger;
+        _http = http;
         Localizer.SetServerConfigurationManager(serverConfigurationManager);
     }
 
@@ -101,7 +111,14 @@ public sealed class JellyTVPushService
     /// <param name="body">The notification body.</param>
     /// <param name="userIds">The Jellyfin user IDs to target.</param>
     /// <returns>A task representing the async operation.</returns>
-    public async Task SendCustomAsync(string title, string body, IEnumerable<string> userIds)
+    public Task SendCustomAsync(string title, string body, IEnumerable<string> userIds)
+        => SendCustomCoreAsync(title, body, userIds, batchTokens: false);
+
+    // Only authenticated custom array webhooks opt into the relay's 100-token limit.
+    internal Task SendCustomWebhookAsync(string title, string body, IEnumerable<string> userIds)
+        => SendCustomCoreAsync(title, body, userIds, batchTokens: true);
+
+    private async Task SendCustomCoreAsync(string title, string body, IEnumerable<string> userIds, bool batchTokens)
     {
         var plugin = Plugin.Instance;
         if (plugin == null)
@@ -121,7 +138,17 @@ public sealed class JellyTVPushService
         }
 
         _logger.LogInformation("Pushing custom notification to {DeviceCount} device(s). title={Title}", deviceTokens.Count, title ?? string.Empty);
-        await PostToRelayManyAsync(deviceTokens, title ?? "JellyTV", body ?? string.Empty).ConfigureAwait(false);
+        if (batchTokens)
+        {
+            foreach (var batch in deviceTokens.Chunk(100))
+            {
+                await PostToRelayManyAsync(batch.ToList(), title ?? "JellyTV", body ?? string.Empty).ConfigureAwait(false);
+            }
+        }
+        else
+        {
+            await PostToRelayManyAsync(deviceTokens, title ?? "JellyTV", body ?? string.Empty).ConfigureAwait(false);
+        }
     }
 
     private async Task PostToRelaySingleAsync(string deviceToken, string title, string body)
@@ -223,7 +250,7 @@ public sealed class JellyTVPushService
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
 
-            using var res = await Http.SendAsync(msg).ConfigureAwait(false);
+            using var res = await _http.SendAsync(msg).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
             {
                 var resp = await res.Content.ReadAsStringAsync().ConfigureAwait(false);

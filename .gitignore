@@ -7,3 +7,5 @@ AGENTS.md
 CLAUDE.md
 .claude/settings.local.json
 .claude/agents/jellyfin-plugin-expert.md
+/tests/**/bin/
+/tests/**/obj/
